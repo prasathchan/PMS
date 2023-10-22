@@ -1,0 +1,127 @@
+﻿@page "/editclientdetails/{Client_Name}/{Client_Category}"
+@using RestSharp;
+@using Newtonsoft.Json;
+@using PMSMaui.Properties;
+@using PMSMaui.Data.ClientDetails;
+@using PMSMaui.Data.Common;
+@using PMSMaui.Data.ClientCategories;
+@using PMS_Library.Models.DataModel;
+
+@inject NavigationManager navManager
+
+@code {
+
+	[Parameter]
+	public string Client_Name { get; set; }
+
+	[Parameter]
+	public string Client_Category { get; set; }
+
+	public string PhoneNo{ get; set; }
+
+	public string EmailiD { get; set; }
+
+	private Client_Details cdObject = new();
+
+	IList<Client_Categories> catList = new List<Client_Categories>();
+	private Categories catClass = new();
+
+	//Initialize
+	protected override void OnInitialized()
+	{
+		try
+		{
+			cdObject = JsonConvert.DeserializeObject<Client_Details>(Clients.FetchSpecificClientwithCategory(Client_Name, Client_Category).Content);
+			catList = JsonConvert.DeserializeObject<IList<Client_Categories>>(Categories.FetchCategories().Content);
+		}
+		catch (Exception ex)
+		{
+			Messages.DisplayErrorAlert(ex.Message);
+		}
+		base.OnInitialized();
+	}
+
+	protected async Task UpdateClient(EditContext clientContext)
+	{
+		bool isValid = clientContext.Validate();
+		try
+		{
+			if (isValid == true)
+			{
+				Client_Name = clientContext.Model.GetType().GetProperty("ClientName").GetValue(clientContext.Model).ToString();
+				PhoneNo = clientContext.Model.GetType().GetProperty("Phone").GetValue(clientContext.Model).ToString();
+				EmailiD = clientContext.Model.GetType().GetProperty("EmailID").GetValue(clientContext.Model).ToString();
+				Client_Category = clientContext.Model.GetType().GetProperty("Category").GetValue(clientContext.Model).ToString();
+
+				Task<RestResponse> response = Task.Run(() => Clients.UpdateClient(Client_Name, EmailiD, PhoneNo, Client_Category));
+				var savResponse = await response;
+				if (savResponse.IsSuccessful)
+				{
+					Messages.DisplaySuccessAlert("Client Edited Successfully");
+					navManager.NavigateTo("/viewclientdetails");
+				}
+				else
+				{
+					Messages.DisplayErrorAlert(savResponse.ErrorMessage);
+				}
+			}
+			else
+			{
+				Messages.DisplayErrorAlert("Please Enter Valid Data");	
+			}
+		}
+		catch (Exception ex)
+		{
+			Messages.DisplayErrorAlert(ex.Message);
+		}
+	}
+
+}
+
+
+@{
+	<h3>Edit - Client Details</h3>
+	<EditForm Model="@cdObject" OnValidSubmit="@UpdateClient">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+		<div class="form-group row">
+			<label for="lblClientName" class="col-sm-2 col-form-label">Client Name</label>
+			<div class="col-sm-10">
+				<InputText id="txtClientName" class="form-control" @bind-Value="cdObject.ClientName" @attributes="Page.SetReadOnly()"/>
+				<ValidationMessage For="@(()=>cdObject.ClientName)" />
+			</div>
+		</div>
+
+		<div class="form-group row">
+			<label for="lblPhone" class="col-sm-2 col-form-label">Phone</label>
+			<div class="col-sm-10">
+				<InputText id="txtPhone" class="form-control" @bind-Value="cdObject.Phone" />
+				<ValidationMessage For="@(() => cdObject.Phone)" />
+			</div>
+		</div>
+
+		<div class="form-group row">
+			<label for="lblEmail" class="col-sm-2 col-form-label">Email ID</label>
+			<div class="col-sm-10">
+				<InputText id="txtEmailID" class="form-control" @bind-Value="cdObject.EmailID" />
+				<ValidationMessage For="@(()=>cdObject.EmailID)" />
+			</div>
+		</div>
+
+		<div class="form-group row">
+			<label for="lblCategory" class="col-sm-2 col-form-label">Category</label>
+			<div class="col-sm-10">
+				<InputText id="selCat" class="form-control" @bind-Value="cdObject.Category" @attributes="Page.SetReadOnly()"/>
+				<ValidationMessage For="@(()=>cdObject.Category)" />
+			</div>
+		</div>
+
+		<div class="form-group row">
+			<div class="col-sm-10">
+				<button type="submit" class="btn btn-primary">Submit</button>
+			</div>
+		</div>
+
+	
+	</EditForm>
+}

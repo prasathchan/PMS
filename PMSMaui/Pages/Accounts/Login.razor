@@ -1,0 +1,141 @@
+﻿@page "/login"
+@using RestSharp;
+@using Data.Auth;
+@using Data.Common;
+@using System.Security.Claims
+@using PMS_Library.Models.DataModel;
+@using System.IdentityModel.Tokens.Jwt
+
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject NavigationManager navManager;
+@inject AuthenticationStateProvider authStateProvider
+
+@layout LoginLayout;
+
+@code {
+    private PMS_Library.Models.DataModel.User_Auth login = new();
+
+    private User_Auth GetUserClaims(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        var readToken = handler.ReadJwtToken(token);
+        var claims = readToken.Claims;
+
+        return new User_Token()
+            {
+                EmailID = claims.First(_ => _.Type == ClaimTypes.Name).Value,
+                AccessToken = token
+            };
+    }
+
+    protected async Task LoginValidate(EditContext clientContext)
+    {
+        bool isValid = clientContext.Validate();
+
+        try
+        {
+            if (isValid == true)
+            {
+                login.EmailID = clientContext.Model.GetType().GetProperty("EmailID").GetValue(clientContext.Model).ToString();
+                login.Password = clientContext.Model.GetType().GetProperty("Password").GetValue(clientContext.Model).ToString();
+
+                Task<RestResponse> response = Task.Run(() => Accounts.Login(login.EmailID, login.Password));
+                var savResponse = await response;
+
+                if (savResponse.IsSuccessful)
+                {
+                    var getUserSession = GetUserClaims(savResponse.Content);
+                    Messages.DisplaySuccessAlert("Login Successful");
+                    navManager.NavigateTo("/viewclientdetails");
+                }
+                else
+                {
+                    Messages.DisplayErrorAlert(savResponse.ErrorMessage);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Messages.DisplayErrorAlert(ex.Message);
+        }
+    }
+
+    protected async Task RegisterTransfer()
+    {
+        try
+        {
+            await Task.Run(() =>
+            {
+                navManager.NavigateTo("/register");
+            });
+        }
+        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+    }
+
+    protected async Task MainTransfer()
+    {
+        try
+        {
+            await Task.Run(() =>
+            {
+                navManager.NavigateTo("/");
+            });
+        }
+        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+    }
+
+}
+
+@{
+    <section class="vh-100 gradient-custom">
+        <div class="container py-5 h-100">
+            <div class="row justify-content-center align-items-center h-100">
+                <div class="col-12 col-lg-9 col-xl-7">
+                    <div class="card shadow-2-strong card-registration" style="border-radius: 15px;">
+                        <div class="card-body p-4 p-md-5">
+                            <h3 class="mb-4 pb-2 pb-md-0 mb-md-5">Registration Form</h3>
+
+                        <EditForm Model=@login OnValidSubmit="LoginValidate">
+                            <DataAnnotationsValidator />
+                            <div class="form-group row">
+                                <label for="lblClientName" class="col-sm-2 col-form-label">User Name</label>
+                                <div class="col-sm-10">
+                                    <InputText id="txtUserName" class="form-control" @bind-Value="login.EmailID" />
+                                    <ValidationMessage For="@(()=>login.EmailID)" />
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="lblPassword" class="col-sm-2 col-form-label">Password</label>
+                                <div class="col-sm-10">
+                                    <InputText id="txtPassword" class="form-control" @bind-Value="login.Password" />
+                                    <ValidationMessage For="@(()=>login.Password)" />
+                                </div>
+                            </div>
+
+                            <div class="form-group row align-items-sm-start">
+                                <div class="col">
+                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                </div>
+
+
+                                <div class="col">
+                                    <button type="button" class="btn btn-primary" @onclick="RegisterTransfer">Register</button>
+                                </div>
+
+
+                                <div class="col">
+                                    <button type="button" class="btn btn-primary" @onclick="MainTransfer">Home</button>
+                                </div>
+                            </div>
+                        </EditForm>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+}

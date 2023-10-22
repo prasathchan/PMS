@@ -1,0 +1,133 @@
+﻿@page "/createnewclient"
+@using RestSharp;
+@using Newtonsoft.Json;
+@using PMSMaui.Data.Common;
+@using PMSMaui.Data.ClientDetails;
+@using PMSMaui.Data.ClientCategories;
+@using PMS_Library.Models.DataModel;
+
+@inject NavigationManager navManager;
+
+<h3>Create - Client Details</h3>
+<h4></h4>
+
+@code {
+
+	private string ClientName { get; set; }
+	private string PhoneNo { get; set; }	
+	private string Emailid { get; set; }	
+	private string Category { get; set; }
+
+	private Client_Details cdObject = new();
+
+	IList<Client_Categories> catList = new List<Client_Categories>();
+	private Client_Categories ccObject = new();
+	private Categories catClass = new();
+
+	//Initialize
+	protected override void OnInitialized()
+	{
+		try
+		{
+			catList = JsonConvert.DeserializeObject<IList<Client_Categories>>(Categories.FetchCategories().Content);
+		}
+		catch (Exception ex)
+		{
+			Messages.DisplayErrorAlert(ex.Message);
+		}
+		base.OnInitialized();
+	}
+
+	protected async Task AddClient(EditContext clientContext)
+	{
+		bool isValid = clientContext.Validate();
+		try
+		{
+			if (isValid == true)
+			{
+				ClientName = clientContext.Model.GetType().GetProperty("ClientName").GetValue(clientContext.Model).ToString();
+				PhoneNo = clientContext.Model.GetType().GetProperty("Phone").GetValue(clientContext.Model).ToString();
+				Emailid = clientContext.Model.GetType().GetProperty("EmailID").GetValue(clientContext.Model).ToString();
+				Category = clientContext.Model.GetType().GetProperty("Category").GetValue(clientContext.Model).ToString();
+				Task<RestResponse> TcliResponse = Task.Run(() => Clients.AddClient(ClientName, Emailid, PhoneNo, Category));
+				RestResponse restResponse = await TcliResponse;
+				if (restResponse.IsSuccessful)
+				{
+					Messages.DisplaySuccessAlert("Client Added Successfully");
+					navManager.NavigateTo("/viewclientdetails", true);
+				}
+				else
+				{
+					Messages.DisplayErrorAlert(restResponse.ErrorMessage);
+				}				
+			}
+			else
+			{
+				Messages.DisplayErrorAlert("Please Enter Valid Details");
+			}
+		}
+		catch(Exception ex)
+        {
+            Messages.DisplayErrorAlert(ex.Message);
+        }
+	}
+}
+
+@{
+	try
+	{
+		<EditForm Model="@cdObject" OnValidSubmit="@AddClient">
+			<DataAnnotationsValidator />
+			<!-- <ValidationSummary /> -->
+			<div class="form-group row">
+				<label for="lblClientName" class="col-sm-2 col-form-label">Client Name</label>
+				<div class="col-sm-10">
+					<!-- <InputText id="txtClientName" class="form-control" bind-Value="cdObject.ClientName" oninput="((e) => { ClientName=(string)e.Value;})" /> -->
+					<InputText id="txtClientName" class="form-control" @bind-Value="cdObject.ClientName" />
+					<ValidationMessage For="@(()=>cdObject.ClientName)" />
+				</div>
+			</div>
+
+			<div class="form-group row">
+				<label for="lblPhone" class="col-sm-2 col-form-label">Phone</label>
+				<div class="col-sm-10">
+					<InputText id="txtPhone" class="form-control" @bind-Value="cdObject.Phone" />
+					<ValidationMessage For="@(() => cdObject.Phone)" />
+				</div>
+			</div>
+
+			<div class="form-group row">
+				<label for="lblEmail" class="col-sm-2 col-form-label">Email ID</label>
+				<div class="col-sm-10">
+					<InputText id="txtEmailID" class="form-control" @bind-Value="cdObject.EmailID" />
+					<ValidationMessage For="@(()=>cdObject.EmailID)" />
+				</div>
+			</div>
+
+			<div class="form-group row">
+				<label for="lblCategory" class="col-sm-2 col-form-label">Category</label>
+				<div class="col-sm-10">
+					<InputSelect id="selCat" class="form-control" @bind-Value="cdObject.Category" >
+						<option selected value="-1">Please Select the Category</option>
+                        @foreach (var item in catList)
+                        {
+                            <option value="@item.CategoryName">@item.CategoryName</option>
+                        }
+					</InputSelect>
+					<ValidationMessage For="@(()=>cdObject.Category)" />
+				</div>
+			</div>
+
+			<div class="form-group row">
+                <div class="col-sm-10">
+					<button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+			</div>
+		</EditForm>
+	}
+	catch(Exception ex)
+	{
+		Messages.DisplayErrorAlert(ex.Message);
+	}
+}
+

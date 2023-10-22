@@ -1,0 +1,200 @@
+﻿@page "/viewclientdetails"
+@using RestSharp;
+@using Newtonsoft.Json;
+@using PMSMaui.Properties;
+@using PMSMaui.Data.ClientDetails;
+@using PMSMaui.Data.ClientCategories;
+@using PMSMaui.Data.Common;
+@using PMS_Library.Models.DataModel;
+
+
+@inject IJSRuntime JSRuntime;
+@inject NavigationManager navManager;
+
+<h3>Client Details</h3>
+<div>
+	<h4><button class="btn btn-primary" @onclick="OnCreateClientOnClick">Create New Client</button></h4>
+</div>
+
+<tr>
+	<td>
+		<input type="text" class="form-check" placeholder="Enter Client Name" @bind="cdObject.ClientName" />
+	</td>
+	<td>
+		<button class="btn btn-primary" @onclick="ShowSpecificClient">Search</button>
+	</td>
+</tr>
+
+<div class="table-responsive">
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th>Client Name</th>
+				<th>Phone</th>
+				<th>Email ID</th>
+				<th>Category</th>
+				<th>Edit</th>
+				<th>Delete</th>
+			</tr>
+		</thead>
+		<tbody class="align-items-center">
+			@{
+				try
+				{
+					if(clientList != null)
+					{
+						@foreach (var client in clientList)
+						{
+							<tr>
+								<td>@client.ClientName</td>
+								<td>@client.Phone</td>
+								<td>@client.EmailID</td>
+								<td>@client.Category</td>
+								<td><button class="btn btn-link" @onclick="@(e => OnEditButtonClicked(client.ClientName, client.Category))">Edit</button></td>
+								<td><button class="btn btn-link" @onclick="@(e => onDeleteButtonClicked(client.ClientName))">Delete</button></td>
+							</tr>
+						}
+					}
+					else
+					{
+						navManager.NavigateTo($"/error/{msg}");
+					}
+				}
+				catch (Exception ex)
+				{
+					msg = ex.Message.ToString();
+					navManager.NavigateTo($"/error/{msg}");
+				}
+			}
+		</tbody>
+	</table>
+</div>
+
+@code
+{
+	IList<Client_Details> clientList;
+
+	Client_Details cdObject = new ();
+	Clients cdClass = new();
+
+
+	private string clientname { get; set; }
+	private string msg { get; set; }
+
+
+	//----------------- Initialize ------------------------------------//
+
+	protected override void OnInitialized()
+	{
+		try
+		{
+			var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+			if (DataConnection.ServerStatus(baseURL) == false)
+			{
+				clientList = null;
+				msg = "Server is Not Running";
+			}
+			else
+			{
+				clientList = JsonConvert.DeserializeObject<IList<Client_Details>>(Clients.FetchAllClients().Content);
+				msg = "Server is Running";
+			}
+		}
+		catch(Exception ex)
+		{
+			msg = ex.Message.ToString();
+			navManager.NavigateTo($"/error/{msg}");
+		}
+		base.OnInitialized();
+	}
+
+	//----------------- Show Specific Client --------------------------//
+
+
+	void ShowSpecificClient()
+	{
+		clientname = cdObject.ClientName;
+		if(clientname != null)
+		{
+			clientList = JsonConvert.DeserializeObject<IList<Client_Details>>(Clients.FetchSpecificClient(clientname).Content);
+		}
+		else
+		{
+			Messages.DisplayErrorAlert("Please Enter Client Name");
+		}
+
+	}
+
+
+	//------------------ Button Click Events --------------------------//
+
+
+	//Create New Client
+	private async void OnCreateClientOnClick()
+	{
+		try
+		{
+			await Task.Run(() =>
+			{
+				navManager.NavigateTo("/createnewclient");
+			});
+		}
+		catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+	}
+
+
+	//Edit Client Details
+	private async void OnEditButtonClicked(string cclient, string ccat)
+	{
+		try
+		{
+			await Task.Run(() =>
+			{
+				navManager.NavigateTo($"/editclientdetails/{cclient}/{ccat}");
+			});
+		}
+		catch (Exception ex)
+		{
+			Messages.DisplayErrorAlert(ex.Message);
+		}
+	}
+
+
+	//Delete Specific Client
+	private async void onDeleteButtonClicked(string cclient)
+	{
+		try
+		{
+			bool answer = await Application.Current.MainPage.DisplayAlert("Are you Sure you want to delete " + cclient + " this poor guy?", "Please dont do that!", "Yes", "No");
+			if (answer == true)
+			{
+				RestResponse response = Clients.DeleteClient(cclient);
+				if (response.IsSuccessful == true)
+				{
+					await Application.Current.MainPage.DisplayAlert("Success", cclient + " Deleted Successfully", "Ok");
+				}
+				else
+				{
+					await Application.Current.MainPage.DisplayAlert("Aborted", cclient + " Not Deleted as the request failed due to " + response.ErrorException.ToString(), "Ok");
+				}
+			}
+			else
+			{
+				await Application.Current.MainPage.DisplayAlert("Aborted", cclient + " Not Deleted", "Ok");
+			}
+			navManager.NavigateTo("/viewclientdetails", true);
+		}
+		catch (Exception ex)
+		{
+			msg = ex.Message.ToString();
+			Messages.DisplayErrorAlert(msg);
+			navManager.NavigateTo($"/error/{msg}");
+		}
+	}
+
+
+	//----------------- End of Button Click Events --------------------//
+
+
+	
+}

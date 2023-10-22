@@ -1,0 +1,68 @@
+﻿@using Data.Common;
+@using Properties;
+
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+
+        <!-- Database or API Connection Status -->
+        <div class="top-row px-4">
+            <ul class="list-inline align-items-center">
+                <li class="list-inline-item">Status :</li>
+                @if (msg == "Active")
+                {
+                    <li class="badge bg-success list-inline-item">
+                        @msg
+                    </li>
+                }
+                else
+                {
+                    <li class="badge bg-danger list-inline-item">
+                        @msg
+                    </li>
+                }
+            </ul>
+        </div>
+        <!-- Database or API Connection Status -->
+
+        <article class="content px-4 bg-gradient">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code
+{
+    public string clientname { get; set; }
+    public string msg { get; set; }
+
+    //Initialize
+    protected override void OnInitialized()
+    {
+        try
+        {
+            var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+            if (DataConnection.ServerStatus(baseURL) == false)
+            {
+                msg = "Inactive";
+
+            }
+            else
+            {
+                msg = "Active";
+            }
+        }
+        catch (Exception ex)
+        {
+            msg = "Inactive";
+            Messages.DisplayErrorAlert(ex.Message.ToString());
+        }
+
+        base.OnInitialized();
+    }
+}

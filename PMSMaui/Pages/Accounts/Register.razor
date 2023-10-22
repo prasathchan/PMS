@@ -1,0 +1,157 @@
+﻿@page "/register"
+@using RestSharp;
+@using Data.Common;
+@using Data.Accounts;
+@using System.Text.RegularExpressions;
+@using PMS_Library.Models.DataModel;
+@using PMS_Library.Models.CustomModel;
+
+
+@inject NavigationManager navManager
+@layout LoginLayout
+
+@code {
+    private string CPassword { get; set; }
+    private PMS_Library.Models.DataModel.User_Auth login = new();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    protected async Task RegisterUser(EditContext loginContext)
+    {
+        bool isValid = loginContext.Validate();
+
+        try
+        {
+            if (isValid == true)
+            {
+                login.EmailID = loginContext.Model.GetType().GetProperty("EmailID").GetValue(loginContext.Model).ToString();
+                login.Password = loginContext.Model.GetType().GetProperty("Password").GetValue(loginContext.Model).ToString();
+                var emailid = login.EmailID.ToString();
+                var cryptpassword = Cryptography.Encrypt(login.Password);
+                Task<RestResponse> response = Task.Run(() => Users.RegisterUser(emailid, cryptpassword));
+                var savResponse = await response;
+
+                if (savResponse.IsSuccessful)
+                {
+                    Messages.DisplaySuccessAlert("User Registered Successfully");
+                    navManager.NavigateTo("/login");
+                }
+                else
+                {
+                    Messages.DisplayErrorAlert(savResponse.Content);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Messages.DisplayErrorAlert(ex.Message);
+        }
+    }
+
+    protected async void HomeTransfer()
+    {
+        try
+        {
+            await Task.Run(() =>
+            {
+                navManager.NavigateTo("/");
+            });
+        }
+        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+    }
+
+    protected void ValidatePassword()
+    {
+        try
+        {
+            var password = login.Password;
+            var MatchPasswordRegex = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,15}$";
+
+            if (password != null)
+            {
+               bool match = Regex.IsMatch(password, MatchPasswordRegex);
+               if(match ==false)
+               {
+                    Messages.DisplayErrorAlert("Password doesnt match the requirments"); ;
+               }
+            }
+            else
+            {
+                Messages.DisplayErrorAlert("Password doesnt match the requirments");
+            }
+        }
+        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+    }
+
+    protected void ComparePassword()
+    {
+        try
+        {
+            var password = login.Password;
+            var confirmPassword = CPassword;
+
+        if (password != confirmPassword)
+        {
+            Messages.DisplayErrorAlert("Password and Confirm Password do not match");
+        }
+    }
+    catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+    }
+}
+
+@{
+    <section class="vh-100 gradient-custom">
+        <div class="container py-5 h-100">
+            <div class="row justify-content-center align-items-center h-100">
+                <div class="col-12 col-lg-9 col-xl-7">
+                    <div class="card shadow-2-strong card-registration" style="border-radius: 15px;">
+                        <div class="card-body p-4 p-md-5">
+                            <h3 class="mb-4 pb-2 pb-md-0 mb-md-5">Registration Form</h3>
+
+                            <EditForm Model=@login OnValidSubmit="RegisterUser">
+                                <DataAnnotationsValidator />
+                                <div class="form-group row">
+                                    <label for="lblClientName" class="col-sm-2 col-form-label">Email ID</label>
+                                    <div class="col-sm-10">
+                                        <InputText id="txtEmailID" class="form-control" @bind-Value="login.EmailID" />
+                                        <ValidationMessage For="@(()=>login.EmailID)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="lblPassword" class="col-sm-2 col-form-label">Enter Password</label>
+                                    <div class="col-sm-10">
+                                        <InputText id="txtPassword" class="form-control" @bind-Value="login.Password" @onblur="ValidatePassword"/>
+                                        <ValidationMessage For="@(()=>login.Password)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="lblConfirmPassword" class="col-sm-2 col-form-label">Re-Enter Password</label>
+                                    <div class="col-sm-10">
+                                            <InputText id="txtConfirmPassword" class="form-control" @bind-Value="CPassword" @onblur="ComparePassword"/>
+                                        <ValidationMessage For="@(()=>login.Password)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <div class="col">
+                                        <button type="submit" class="btn btn-primary">Register</button>
+                                    </div>
+
+                                    <div class="col">
+                                        <button type="button" class="btn btn-primary" @onclick="HomeTransfer">Home</button>
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+}

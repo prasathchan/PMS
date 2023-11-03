@@ -1,21 +1,31 @@
 ﻿@page "/register"
 @using RestSharp;
 @using Data.Common;
-@using Data.Accounts;
+@using Newtonsoft.Json;
+@using PMSMaui.Data.UserRoles;
+@using PMSMaui.Data.Auth;
 @using System.Text.RegularExpressions;
 @using PMS_Library.Models.DataModel;
 @using PMS_Library.Models.CustomModel;
 
 
 @inject NavigationManager navManager
-@layout LoginLayout
 
 @code {
     private string CPassword { get; set; }
     private PMS_Library.Models.DataModel.User_Auth login = new();
+    IList<User_Roles> roleList = new List<User_Roles>();
 
     protected override void OnInitialized()
     {
+        try
+        {
+            roleList = JsonConvert.DeserializeObject<IList<User_Roles>>(Roles.FetchUserRoles().Content);
+        }
+        catch (Exception ex)
+        {
+            Messages.DisplayErrorAlert(ex.Message);
+        }
         base.OnInitialized();
     }
 
@@ -29,15 +39,21 @@
             {
                 login.EmailID = loginContext.Model.GetType().GetProperty("EmailID").GetValue(loginContext.Model).ToString();
                 login.Password = loginContext.Model.GetType().GetProperty("Password").GetValue(loginContext.Model).ToString();
-                var emailid = login.EmailID.ToString();
-                var cryptpassword = Cryptography.Encrypt(login.Password);
-                Task<RestResponse> response = Task.Run(() => Users.RegisterUser(emailid, cryptpassword));
+                login.Role = loginContext.Model.GetType().GetProperty("Role").GetValue(loginContext.Model).ToString();
+                var user = new User_Auth
+                {
+                    EmailID = login.EmailID,
+                    Password = login.Password,
+                    Role= login.Role
+                };
+
+                Task<RestResponse> response = Task.Run(() => Accounts.Register(user));
                 var savResponse = await response;
 
                 if (savResponse.IsSuccessful)
                 {
                     Messages.DisplaySuccessAlert("User Registered Successfully");
-                    navManager.NavigateTo("/login");
+                    navManager.NavigateTo("/");
                 }
                 else
                 {
@@ -137,6 +153,19 @@
                                     </div>
                                 </div>
 
+                                <div class="form-group row">
+                                <label for="lblUserRole" class="col-sm-2 col-form-label">Role</label>
+                                    <div class="col-sm-10">
+                                        <InputSelect id="selURole" class="form-control" @bind-Value="login.Role">
+                                            <option selected value="-1">Please Select the Category</option>
+                                            @foreach (var item in roleList)
+                                            {
+                                                <option value="@item.RoleDescription">@item.RoleDescription</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="@(()=>login.Role)" />
+                                    </div>
+                                </div>
                                 <div class="form-group row">
                                     <div class="col">
                                         <button type="submit" class="btn btn-primary">Register</button>

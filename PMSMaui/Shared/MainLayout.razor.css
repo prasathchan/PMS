@@ -4,6 +4,9 @@
     flex-direction: column;
 }
 
+#mydiv > .btn-default { background:transparent;}
+
+
 main {
     flex: 1;
 }

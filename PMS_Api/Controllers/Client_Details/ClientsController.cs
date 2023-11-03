@@ -12,7 +12,6 @@ namespace PMS_Api.Controllers.ClientDetails
 		private readonly PMS_Entities _context = context;
 
 
-		[Authorize]
 		[HttpGet]
 		[Route("api/Clients")]
 		public async Task<ActionResult<IEnumerable<Client_Details>>> GetClients()

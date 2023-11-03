@@ -1,33 +1,60 @@
-﻿@using Data.Common;
-@using Properties;
+﻿@using System.Security.Claims
+@using Data.Common
+@using Properties
+@using Microsoft.AspNetCore.Components.Authorization
+@using Data.Auth
+@using PMS_Library.Models.CustomModel
+@inject AuthenticationStateProvider authStateProvider
+@inject IJSRuntime jSRuntime
 
 @inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
+    <div class="sidebar" style="width: 300px;">
         <NavMenu />
     </div>
 
-    <main>
-
+    <main>        
         <!-- Database or API Connection Status -->
-        <div class="top-row px-4">
-            <ul class="list-inline align-items-center">
-                <li class="list-inline-item">Status :</li>
-                @if (msg == "Active")
-                {
-                    <li class="badge bg-success list-inline-item">
-                        @msg
-                    </li>
-                }
-                else
-                {
-                    <li class="badge bg-danger list-inline-item">
-                        @msg
-                    </li>
-                }
-            </ul>
+        <div class="container-fluid">
+            <div class="top-row px-7">
+                <div class="col-3" style="text-align:start">
+                    <div class="row">
+                        <div class="col-2">Status:</div>
+
+                        @if (msg == "Active")
+                        {
+                            <div class="col-1">
+                                <button class="badge bg-success">@msg</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-1">
+                                <button class="badge badge-pill bg-danger">@msg</button>
+                            </div>
+                        }
+
+                    </div>
+
+                </div>
+                <div class="col">
+
+                    <div id="mydiv" class="col" style="text-align: end;">
+                        <div class="dropdown bg-transparent">
+                            <AuthorizeView>
+                                <Authorized>
+                                    <button class="btn" type="button" id="mybtn" @onclick="LogoutAsync">
+                                        Logout
+                                    </button>
+                                </Authorized>
+                            </AuthorizeView>                      
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+       
         <!-- Database or API Connection Status -->
 
         <article class="content px-4 bg-gradient">
@@ -40,6 +67,12 @@
 {
     public string clientname { get; set; }
     public string msg { get; set; }
+  
+    public async Task LogoutAsync()
+    {
+        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+        await customAuthStateProvider.UpdateAuthenticationState(new CustomAuthenticationModel());
+    }
 
     //Initialize
     protected override void OnInitialized()

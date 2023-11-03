@@ -2,13 +2,14 @@
 using PMS_Library.Models.CustomModel;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Text.Json;
+using PMS_Library.Models.DataModel;
 
 
 namespace PMSMaui.Data.Auth
 {
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
-        private ClaimsPrincipal anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        private readonly ClaimsPrincipal anonymous = new(new ClaimsIdentity());
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
             try
@@ -23,7 +24,8 @@ namespace PMSMaui.Data.Auth
                     var DeserializeUserSession = JsonSerializer.Deserialize<CustomAuthenticationModel>(getUserSessionFromStorage);
                     var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new[]
                     {
-                        new Claim(ClaimTypes.Name, DeserializeUserSession.EmailID!) 
+                        new Claim(ClaimTypes.Name, DeserializeUserSession.EmailID!),
+                        new Claim(ClaimTypes.Role, DeserializeUserSession.Role!),
                     }, "CustomAuth"));
                     return await Task.FromResult(new AuthenticationState(claimsPrincipal));
                 }
@@ -41,16 +43,13 @@ namespace PMSMaui.Data.Auth
             if (!string.IsNullOrEmpty(userSession.EmailID))
             {
                 string serializeUserSession = JsonSerializer.Serialize(userSession);
-                await SecureStorage.Default.SetAsync("UserSession", serializeUserSession);
+                await SecureStorage.Default.SetAsync("CustomAuthenticationModel", serializeUserSession);
 
-                claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, userSession.EmailID!),
-                }));
+                  claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new List<Claim> { new(ClaimTypes.Name, userSession.EmailID), new(ClaimTypes.Role, userSession.Role) }, "jwtAuthType"));
             }
             else
             {
-                SecureStorage.Default.Remove("UserSession");
+                SecureStorage.Default.Remove("CustomAuthenticationModel");
                 claimsPrincipal = anonymous;
             }
 

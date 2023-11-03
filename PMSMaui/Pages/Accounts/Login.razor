@@ -1,30 +1,55 @@
 ﻿@page "/login"
 @using RestSharp;
 @using Data.Auth;
+@using Properties;
 @using Data.Common;
+@using Newtonsoft.Json;
 @using System.Security.Claims
 @using PMS_Library.Models.DataModel;
-@using System.IdentityModel.Tokens.Jwt
-
+@using PMS_Library.Models.CustomModel;
+@using System.IdentityModel.Tokens.Jwt;
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject NavigationManager navManager;
 @inject AuthenticationStateProvider authStateProvider
 
-@layout LoginLayout;
 
 @code {
-    private PMS_Library.Models.DataModel.User_Auth login = new();
+    private User_Auth login = new();
+    private string msg { get; set; }
 
-    private User_Auth GetUserClaims(string token)
+    protected override void OnInitialized()
+    {
+        try
+        {
+            var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+            if (DataConnection.ServerStatus(baseURL) == false)
+            {
+                msg = "Server is Not Running";
+            }
+            else
+            {
+                msg = "Server is Running";
+            }
+        }
+        catch (Exception ex)
+        {
+            msg = ex.Message.ToString();
+            navManager.NavigateTo($"/error/{msg}");
+        }
+        base.OnInitialized();
+    }
+
+    private CustomAuthenticationModel GetUserClaims(string token)
     {
         var handler = new JwtSecurityTokenHandler();
         var readToken = handler.ReadJwtToken(token);
         var claims = readToken.Claims;
 
-        return new User_Token()
+        return new CustomAuthenticationModel()
             {
                 EmailID = claims.First(_ => _.Type == ClaimTypes.Name).Value,
+                Role= claims.First(_ => _.Type == ClaimTypes.Role).Value,
                 AccessToken = token
             };
     }
@@ -32,26 +57,37 @@
     protected async Task LoginValidate(EditContext clientContext)
     {
         bool isValid = clientContext.Validate();
-
         try
         {
             if (isValid == true)
             {
                 login.EmailID = clientContext.Model.GetType().GetProperty("EmailID").GetValue(clientContext.Model).ToString();
                 login.Password = clientContext.Model.GetType().GetProperty("Password").GetValue(clientContext.Model).ToString();
-
-                Task<RestResponse> response = Task.Run(() => Accounts.Login(login.EmailID, login.Password));
+                var lm = new LoginModel()
+                {
+                    EmailID = login.EmailID.ToUpper(),
+                    Password = login.Password
+                };
+                Task<RestResponse> response = Task.Run(() => Accounts.Login(lm));
                 var savResponse = await response;
 
                 if (savResponse.IsSuccessful)
                 {
-                    var getUserSession = GetUserClaims(savResponse.Content);
+                    var getToken = JsonConvert.DeserializeObject<CustomAuthenticationModel>(savResponse.Content);
+                    var userToken = GetUserClaims(getToken.AccessToken);
+                    if (userToken == null)
+                    {
+                        Messages.DisplayErrorAlert("Invalid User");
+                        return;
+                    }
+                    var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+                    await customAuthStateProvider.UpdateAuthenticationState(getToken);
                     Messages.DisplaySuccessAlert("Login Successful");
-                    navManager.NavigateTo("/viewclientdetails");
+                    navManager.NavigateTo("/");
                 }
                 else
                 {
-                    Messages.DisplayErrorAlert(savResponse.ErrorMessage);
+                    Messages.DisplayErrorAlert("Invalid Login Attempt");
                 }
             }
         }
@@ -60,31 +96,6 @@
             Messages.DisplayErrorAlert(ex.Message);
         }
     }
-
-    protected async Task RegisterTransfer()
-    {
-        try
-        {
-            await Task.Run(() =>
-            {
-                navManager.NavigateTo("/register");
-            });
-        }
-        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
-    }
-
-    protected async Task MainTransfer()
-    {
-        try
-        {
-            await Task.Run(() =>
-            {
-                navManager.NavigateTo("/");
-            });
-        }
-        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
-    }
-
 }
 
 @{
@@ -94,42 +105,32 @@
                 <div class="col-12 col-lg-9 col-xl-7">
                     <div class="card shadow-2-strong card-registration" style="border-radius: 15px;">
                         <div class="card-body p-4 p-md-5">
-                            <h3 class="mb-4 pb-2 pb-md-0 mb-md-5">Registration Form</h3>
+                            <h3 class="mb-4 pb-2 pb-md-0 mb-md-5">Login Form</h3>
 
-                        <EditForm Model=@login OnValidSubmit="LoginValidate">
-                            <DataAnnotationsValidator />
-                            <div class="form-group row">
-                                <label for="lblClientName" class="col-sm-2 col-form-label">User Name</label>
-                                <div class="col-sm-10">
-                                    <InputText id="txtUserName" class="form-control" @bind-Value="login.EmailID" />
-                                    <ValidationMessage For="@(()=>login.EmailID)" />
-                                </div>
-                            </div>
-
-                            <div class="form-group row">
-                                <label for="lblPassword" class="col-sm-2 col-form-label">Password</label>
-                                <div class="col-sm-10">
-                                    <InputText id="txtPassword" class="form-control" @bind-Value="login.Password" />
-                                    <ValidationMessage For="@(()=>login.Password)" />
-                                </div>
-                            </div>
-
-                            <div class="form-group row align-items-sm-start">
-                                <div class="col">
-                                    <button type="submit" class="btn btn-primary">Submit</button>
+                            <EditForm Model=@login OnValidSubmit="LoginValidate">
+                                <DataAnnotationsValidator />
+                                <div class="form-group row">
+                                    <label for="lblClientName" class="col-sm-2 col-form-label">User Name</label>
+                                    <div class="col-sm-10">
+                                        <InputText id="txtUserName" class="form-control" @bind-Value="login.EmailID" />
+                                        <ValidationMessage For="@(()=>login.EmailID)" />
+                                    </div>
                                 </div>
 
-
-                                <div class="col">
-                                    <button type="button" class="btn btn-primary" @onclick="RegisterTransfer">Register</button>
+                                <div class="form-group row">
+                                    <label for="lblPassword" class="col-sm-2 col-form-label">Password</label>
+                                    <div class="col-sm-10">
+                                        <InputText id="txtPassword" class="form-control" @bind-Value="login.Password" />
+                                        <ValidationMessage For="@(()=>login.Password)" />
+                                    </div>
                                 </div>
 
-
-                                <div class="col">
-                                    <button type="button" class="btn btn-primary" @onclick="MainTransfer">Home</button>
+                                <div class="form-group row align-items-sm-start">
+                                    <div class="col">
+                                        <button type="submit" class="btn btn-primary">Submit</button>
+                                    </div>
                                 </div>
-                            </div>
-                        </EditForm>
+                            </EditForm>
 
                         </div>
                     </div>

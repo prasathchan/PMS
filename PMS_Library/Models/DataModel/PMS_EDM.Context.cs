@@ -7,9 +7,11 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
+using Microsoft.EntityFrameworkCore;
+
 namespace PMS_Library.Models.DataModel
 {
-    using Microsoft.EntityFrameworkCore;
+
     
     public partial class PMS_Entities : DbContext
     {
@@ -20,7 +22,6 @@ namespace PMS_Library.Models.DataModel
     
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
         }
     
         public virtual DbSet<Client_Billing> Client_Billing { get; set; }

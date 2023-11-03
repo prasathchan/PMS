@@ -1,0 +1,118 @@
+﻿@page "/viewdoctors"
+@using RestSharp;
+@using Newtonsoft.Json;
+@using PMSMaui.Properties;
+@using PMSMaui.Data.Common;
+@inject NavigationManager navManager;
+<h3>View_Doctors</h3>
+
+<div>
+	<h4><button class="btn btn-primary" @onclick="OnClickCreateDoctor">Create New Doctor</button></h4>
+</div>
+
+<div class="table-responsive">
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th>Doctor Name</th>
+				<th>Speciality</th>
+				<th>Phone</th>
+				<th>EmailAddress</th>
+				<th>ResidentialAddress</th>
+				<th>JoiningDate</th>
+				<th>LoginEnabled</th>
+				<th>Status</th>
+				<th>Edit</th>
+				<th>Delete</th>
+			</tr>
+		</thead>
+		<tbody class="align-items-center">
+			@{
+				try
+				{
+					if (doctorList != null)
+					{
+						@foreach (var doctor in doctorList)
+						{
+							<tr>
+								<td>@doctor.DoctorName</td>
+								<td>@doctor.SpecialityCode</td>
+								<td>@doctor.Phone</td>
+								<td>@doctor.EmailAddress</td>
+								<td>@doctor.ResidentialAddress</td>
+								<td>@doctor.JoiningDate</td>
+								<td>@doctor.LoginEnabled</td>
+								<td>@doctor.Status</td>
+								<td><button class="btn btn-link" @onclick="@(e => OnClickEditDoctor(doctor.DoctorName, doctor.Phone))">Edit</button></td>
+							</tr>
+						}
+					}
+					else
+					{
+						navManager.NavigateTo($"/error/{msg}");
+					}
+				}
+				catch (Exception ex)
+				{
+					msg = ex.Message.ToString();
+					navManager.NavigateTo($"/error/{msg}");
+				}
+			}
+		</tbody>
+	</table>
+</div>
+
+@code {
+
+	private string msg { get; set; }
+	IList<PMS_Library.Models.DataModel.Doctor_Details> doctorList;
+
+	protected override void OnInitialized()
+	{
+		try
+		{
+			var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+			if (DataConnection.ServerStatus(baseURL) == false)
+			{
+				doctorList = null;
+				msg = "Server is Not Running";
+			}
+			else
+			{
+				doctorList = JsonConvert.DeserializeObject<IList<PMS_Library.Models.DataModel.Doctor_Details>>(Data.DoctorDetails.Doctors.FetchDoctors().Content);
+				msg = "Server is Running";
+			}
+		}
+		catch (Exception ex)
+		{
+			msg = ex.Message.ToString();
+			navManager.NavigateTo($"/error/{msg}");
+		}
+		base.OnInitialized();
+	}
+
+	private async void OnClickCreateDoctor()
+	{
+		try
+		{
+			await Task.Run(() =>
+			{
+				navManager.NavigateTo("/createdoctor");
+			});
+		}
+		catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+	}
+
+	private async void OnClickEditDoctor(string doctorName, string phone)
+	{
+		try
+		{
+			await Task.Run(() =>
+			{
+				navManager.NavigateTo($"/editdoctor/{doctorName}/{phone}");
+			});
+		}
+		catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+		      
+	}
+}

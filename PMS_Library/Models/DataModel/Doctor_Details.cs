@@ -27,6 +27,5 @@ namespace PMS_Library.Models.DataModel
         public System.DateTime JoiningDate { get; set; }
         public bool LoginEnabled { get; set; }
         public string Status { get; set; }
-        public string RoleCode { get; set; }
     }
 }

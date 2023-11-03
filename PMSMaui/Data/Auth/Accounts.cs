@@ -6,13 +6,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Security.Claims;
+using PMS_Library.Models.DataModel;
+using PMS_Library.Models.CustomModel;
+using System.Text.Json;
 
 
 namespace PMSMaui.Data.Auth
 {
     public class Accounts
     {
-        public static RestResponse Login(string username, string password)
+        public static RestResponse Login(LoginModel lm)
         {
             RestResponse response = new();
             try
@@ -23,8 +26,32 @@ namespace PMSMaui.Data.Auth
                     MaxTimeout = -1,
                 };
                 var client = new RestClient(options);
-                var request = new RestRequest("/api/Auth/Login", Method.Post);
-                request.AddJsonBody(new { username, password });
+                var request = new RestRequest("/api/Auth", Method.Post);
+                var body = JsonSerializer.Serialize(lm);
+                request.AddStringBody(body, DataFormat.Json);
+                response = client.ExecutePost(request);
+            }
+            catch (Exception ex)
+            {
+                response.Content = ex.Message;
+            }
+            return response;
+        }
+
+        public static RestResponse Register(User_Auth user)
+        {
+            RestResponse response = new();
+            try
+            {
+                var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+                var options = new RestClientOptions(baseURL)
+                {
+                    MaxTimeout = -1,
+                };
+                var client = new RestClient(options);
+                var request = new RestRequest("/api/Auth/Register", Method.Post);
+                var body = JsonSerializer.Serialize(user);
+                request.AddStringBody(body, DataFormat.Json);
                 response = client.ExecutePost(request);
             }
             catch (Exception ex)

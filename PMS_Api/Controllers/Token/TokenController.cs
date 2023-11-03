@@ -31,6 +31,7 @@ namespace PMS_Api.Controllers.Token
         {
             try
             {  
+               
                 //Check if the User Exists in the User_Auth Table
                 var user = await _context.User_Auth.FirstOrDefaultAsync(x => x.EmailID.Equals(lm.EmailID));
 
@@ -50,7 +51,8 @@ namespace PMS_Api.Controllers.Token
                             //Create the Claims for the User
                             var authClaims = new List<Claim>
                             {
-                            new(ClaimTypes.Name, lm.EmailID),
+                            new(ClaimTypes.Name, user.EmailID),
+                            new(ClaimTypes.Role, user.Role),
                             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                             };
 
@@ -67,30 +69,29 @@ namespace PMS_Api.Controllers.Token
                                 EmailID = lm.EmailID,
                                 AccessToken = new JwtSecurityTokenHandler().WriteToken(token),
                                 RefreshToken = refreshToken,
-                                TokenExpiration = token.ValidTo
+                                TokenExpiration = token.ValidTo,
+                                Role = user.Role
                             });
 
                             _userData.AccessID = "AccessID_" + Guid.NewGuid();
                             _context.Entry(_userData).State = EntityState.Added;
                             await _context.SaveChangesAsync();
-                            return Ok(_userData.ToJson());
+                            return Ok(_userData);
                         }
                         else if (result.TokenExpiration >= DateTime.UtcNow.AddMinutes(330)) //User already has an entry in User_Token context, then Check if the Access Token is Valid
                         {
                             //if the Access Token is Valid, then Return the Access Token
-                            return Content("User Already has a Valid Access Token.\n" + result.ToJson());
+                            return Content(result.ToJson());
                         }
                         else
                         {
                             //if the Access Token is Invalid, then Revoke the Access Token
                             _context.User_Token.Where(x => x.AccessID.Equals(result.AccessID)).ExecuteDelete();
-                            _context.SaveChanges();
-
-                            //Create a New Record for the User
+                            await _context.SaveChangesAsync();
                             result.AccessID = "AccessID_" + Guid.NewGuid();
                             _context.Entry(result).State = EntityState.Added;
                             await _context.SaveChangesAsync();
-                            return Ok(result.ToJson());
+                            return Ok(result);
                         }
                     }
                 }
@@ -125,48 +126,54 @@ namespace PMS_Api.Controllers.Token
                 {
                     //Check if the Access Token is Valid or not
                     var principal = GetPrincipalFromExpiredToken(_userData.AccessToken);
-                    if (principal != null)
+                    if (principal is not null)
                     {
-                        //Get the Email ID from the Access Token
-                        string dbemail = principal.Identity.Name;
-
-                        //Check if the Email ID is not Null and convert it to Upper Case
-                        if (!string.IsNullOrEmpty(dbemail)) 
-                        { dbemail = dbemail.ToUpper(); }
-                        else //If the Email ID is Null, then return Bad Request
-                        { return BadRequest("Invalid access token or refresh token"); }
-
-                        //Validated the Email ID from the Access Token and the Email ID from the User_Token Table
-                        bool isEmail = dbemail.Equals(_userData.EmailID.ToUpper(), StringComparison.InvariantCultureIgnoreCase);
-                        if(isEmail==true)
+                        if (principal.Identity is not null)
                         {
-                            if(_userData.RefreshToken != rtm.RefreshToken) //Check if the Refresh Token is Valid or not
+                            //Get the Email ID from the Access Token
+                            string? dbemail = principal.Identity.Name;
+
+                            //Check if the Email ID is not Null and convert it to Upper Case
+                            if (!string.IsNullOrEmpty(dbemail))
+                            { dbemail = dbemail.ToUpper(); }
+                            else //If the Email ID is Null, then return Bad Request
+                            { return BadRequest("Invalid access token or refresh token"); }
+
+                            //Validated the Email ID from the Access Token and the Email ID from the User_Token Table
+                            bool isEmail = dbemail.Equals(_userData.EmailID.ToUpper(), StringComparison.InvariantCultureIgnoreCase);
+                            if (isEmail == true)
                             {
-                                return BadRequest("Invalid refresh token");
+                                if (_userData.RefreshToken != rtm.RefreshToken) //Check if the Refresh Token is Valid or not
+                                {
+                                    return BadRequest("Invalid refresh token");
+                                }
+                                else
+                                {
+                                    var newAccessToken = GenerateJSONAccessToken(principal.Claims.ToList());
+                                    var newRefreshToken = GenerateJSONRefreshToken();
+
+                                    _userData.AccessToken = new JwtSecurityTokenHandler().WriteToken(newAccessToken);
+                                    _userData.RefreshToken = newRefreshToken;
+                                    _userData.TokenExpiration = newAccessToken.ValidTo;
+                                    _context.Entry(_userData).State = EntityState.Modified;
+                                    await _context.SaveChangesAsync();
+                                    return Ok(_userData.ToJson());
+                                }
                             }
                             else
                             {
-                                var newAccessToken = GenerateJSONAccessToken(principal.Claims.ToList());
-                                var newRefreshToken = GenerateJSONRefreshToken();
-
-                                _userData.AccessToken = new JwtSecurityTokenHandler().WriteToken(newAccessToken);
-                                _userData.RefreshToken = newRefreshToken;
-                                _userData.TokenExpiration = newAccessToken.ValidTo;
-                                _context.Entry(_userData).State = EntityState.Modified;
-                                await _context.SaveChangesAsync();
-                                return Ok(_userData.ToJson());
+                                return BadRequest("Invalid User Access to the Token");
                             }
-                            
                         }
                         else
                         {
-                            return BadRequest("Invalid User Access to the Token");
-                        }   
+                            return BadRequest("Invalid/Expired access token or refresh token");
+
+                        }
                     }
                     else
                     {
-                        return BadRequest("Invalid/Expired access token or refresh token");
-
+                        return BadRequest("Invalid access token or refresh token");
                     }
                 }
                 else { return BadRequest("Error in Fetching the User Token"); }

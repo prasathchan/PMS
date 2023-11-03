@@ -9,9 +9,8 @@ namespace PMS_Library.Models.CustomModel
     public class CustomAuthenticationModel
     {
         public string EmailID { get; set; }
-        public string Password { get; set; }
         public string AccessToken { get; set; }
         public string RefreshToken { get; set; }
-        public string Validto { get; set; }
+        public string Role { get; set; }
     }
 }

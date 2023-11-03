@@ -18,9 +18,8 @@ namespace PMS_Library.Models.DataModel
         [Key]
         public string StaffID { get; set; }
         public string HospitalID { get; set; }
-        public Nullable<System.DateTime> Date { get; set; }
+        public System.DateTime Date { get; set; }
         public string StaffName { get; set; }
-        public string RoleCode { get; set; }
         public string Phone { get; set; }
         public string EmailAddress { get; set; }
         public string ResidentialAddress { get; set; }

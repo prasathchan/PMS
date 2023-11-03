@@ -16,7 +16,6 @@ namespace PMS_Library.Models.DataModel
     public partial class User_Roles
     {
         [Key]
-        public string RoleID { get; set; }
         public string RoleCode { get; set; }
         public string RoleDescription { get; set; }
     }

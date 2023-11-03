@@ -9,7 +9,6 @@
 
 namespace PMS_Library.Models.DataModel
 {
-    using Newtonsoft.Json;
     using System;
     using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
@@ -17,9 +16,9 @@ namespace PMS_Library.Models.DataModel
     public partial class User_Auth
     {
         [Key]
-        [JsonIgnore]
         public string LoginId { get; set; }
         public string EmailID { get; set; }
         public string Password { get; set; }
+        public string Role { get; set; }
     }
 }

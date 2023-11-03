@@ -15,7 +15,7 @@ namespace PMS_Library.Models.DataModel
 
     public partial class Doctor_Specialty
     {
-        [Key]
+        [Key]   
         public string SpecialityID { get; set; }
         public string SpecialityName { get; set; }
         public string SpecialityDescription { get; set; }

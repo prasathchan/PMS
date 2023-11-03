@@ -20,7 +20,7 @@ namespace PMS_Library.Models.DataModel
         public string EmailID { get; set; }
         public string AccessToken { get; set; }
         public string RefreshToken { get; set; }
-        public System.DateTime TokenExpiration { get; set; }
-
+        public Nullable<System.DateTime> TokenExpiration { get; set; }
+        public string Role { get; set; }
     }
 }

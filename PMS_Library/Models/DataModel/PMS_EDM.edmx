@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-    <Schema Namespace="PMS_Model.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+      <Schema Namespace="PMS_Model.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="Client_Billing">
           <Key>
             <PropertyRef Name="BillingID" />
@@ -73,7 +73,6 @@
           <Property Name="JoiningDate" Type="date" Nullable="false" />
           <Property Name="LoginEnabled" Type="bit" Nullable="false" />
           <Property Name="Status" Type="nvarchar" MaxLength="50" Nullable="false" />
-          <Property Name="RoleCode" Type="nvarchar" MaxLength="50" />
         </EntityType>
         <EntityType Name="Doctor_Specialty">
           <Key>
@@ -104,9 +103,8 @@
           </Key>
           <Property Name="StaffID" Type="nvarchar" MaxLength="50" Nullable="false" />
           <Property Name="HospitalID" Type="nvarchar" MaxLength="50" Nullable="false" />
-          <Property Name="Date" Type="date" />
+          <Property Name="Date" Type="date" Nullable="false" />
           <Property Name="StaffName" Type="nvarchar" MaxLength="50" Nullable="false" />
-          <Property Name="RoleCode" Type="nvarchar" MaxLength="50" Nullable="false" />
           <Property Name="Phone" Type="nvarchar" MaxLength="50" />
           <Property Name="EmailAddress" Type="nvarchar" MaxLength="50" />
           <Property Name="ResidentialAddress" Type="nvarchar" MaxLength="50" />
@@ -121,12 +119,12 @@
           <Property Name="LoginId" Type="nvarchar" MaxLength="50" Nullable="false" />
           <Property Name="EmailID" Type="nvarchar(max)" Nullable="false" />
           <Property Name="Password" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="Role" Type="nvarchar" MaxLength="50" Nullable="false" />
         </EntityType>
         <EntityType Name="User_Roles">
           <Key>
-            <PropertyRef Name="RoleID" />
+            <PropertyRef Name="RoleCode" />
           </Key>
-          <Property Name="RoleID" Type="nvarchar" MaxLength="50" Nullable="false" />
           <Property Name="RoleCode" Type="nvarchar" MaxLength="50" Nullable="false" />
           <Property Name="RoleDescription" Type="nvarchar" MaxLength="50" />
         </EntityType>
@@ -136,9 +134,10 @@
           </Key>
           <Property Name="AccessID" Type="nvarchar" MaxLength="50" Nullable="false" />
           <Property Name="EmailID" Type="nvarchar" MaxLength="50" Nullable="false" />
-          <Property Name="AccessToken" Type="nvarchar(max)" Nullable="false" />
-          <Property Name="RefreshToken" Type="nvarchar(max)" Nullable="false" />
-          <Property Name="TokenExpiration" Type="datetime2" Precision="7" Nullable="false" />
+          <Property Name="AccessToken" Type="nvarchar(max)" />
+          <Property Name="RefreshToken" Type="nvarchar(max)" />
+          <Property Name="TokenExpiration" Type="datetime2" Precision="7" />
+          <Property Name="Role" Type="nvarchar(max)" />
         </EntityType>
         <EntityContainer Name="PMS_ModelStoreContainer">
           <EntitySet Name="Client_Billing" EntityType="Self.Client_Billing" Schema="dbo" store:Type="Tables" />
@@ -154,7 +153,8 @@
           <EntitySet Name="User_Roles" EntityType="Self.User_Roles" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="User_Token" EntityType="Self.User_Token" Schema="dbo" store:Type="Tables" />
         </EntityContainer>
-      </Schema></edmx:StorageModels>
+      </Schema>
+    </edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="PMS_Model" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
@@ -226,7 +226,6 @@
           <Property Name="JoiningDate" Type="DateTime" Nullable="false" Precision="0" />
           <Property Name="LoginEnabled" Type="Boolean" Nullable="false" />
           <Property Name="Status" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
-          <Property Name="RoleCode" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
         </EntityType>
         <EntityType Name="Doctor_Specialty">
           <Key>
@@ -257,9 +256,8 @@
           </Key>
           <Property Name="StaffID" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
           <Property Name="HospitalID" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
-          <Property Name="Date" Type="DateTime" Precision="0" />
+          <Property Name="Date" Type="DateTime" Nullable="false" Precision="0" />
           <Property Name="StaffName" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
-          <Property Name="RoleCode" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
           <Property Name="Phone" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
           <Property Name="EmailAddress" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
           <Property Name="ResidentialAddress" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
@@ -274,14 +272,25 @@
           <Property Name="LoginId" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
           <Property Name="EmailID" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" Nullable="false" />
           <Property Name="Password" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Role" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
         </EntityType>
         <EntityType Name="User_Roles">
           <Key>
-            <PropertyRef Name="RoleID" />
+            <PropertyRef Name="RoleCode" />
           </Key>
-          <Property Name="RoleID" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
           <Property Name="RoleCode" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
           <Property Name="RoleDescription" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="User_Token">
+          <Key>
+            <PropertyRef Name="AccessID" />
+          </Key>
+          <Property Name="AccessID" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="EmailID" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="AccessToken" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="RefreshToken" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="TokenExpiration" Type="DateTime" Precision="7" />
+          <Property Name="Role" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
         </EntityType>
         <EntityContainer Name="PMS_Entities" annotation:LazyLoadingEnabled="true">
           <EntitySet Name="Client_Billing" EntityType="Self.Client_Billing" />
@@ -295,18 +304,8 @@
           <EntitySet Name="Staff_Details" EntityType="Self.Staff_Details" />
           <EntitySet Name="User_Auth" EntityType="Self.User_Auth" />
           <EntitySet Name="User_Roles" EntityType="Self.User_Roles" />
-          <EntitySet Name="User_Token" EntityType="PMS_Model.User_Token" />
+          <EntitySet Name="User_Token" EntityType="Self.User_Token" />
         </EntityContainer>
-        <EntityType Name="User_Token">
-          <Key>
-            <PropertyRef Name="AccessID" />
-          </Key>
-          <Property Name="AccessToken" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
-          <Property Name="RefreshToken" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
-          <Property Name="TokenExpiration" Type="DateTime" Nullable="false" Precision="7" />
-          <Property Name="AccessID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="true" />
-          <Property Name="EmailID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="true" />
-        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -385,7 +384,6 @@
                 <ScalarProperty Name="JoiningDate" ColumnName="JoiningDate" />
                 <ScalarProperty Name="LoginEnabled" ColumnName="LoginEnabled" />
                 <ScalarProperty Name="Status" ColumnName="Status" />
-                <ScalarProperty Name="RoleCode" ColumnName="RoleCode" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
@@ -421,7 +419,6 @@
                 <ScalarProperty Name="HospitalID" ColumnName="HospitalID" />
                 <ScalarProperty Name="Date" ColumnName="Date" />
                 <ScalarProperty Name="StaffName" ColumnName="StaffName" />
-                <ScalarProperty Name="RoleCode" ColumnName="RoleCode" />
                 <ScalarProperty Name="Phone" ColumnName="Phone" />
                 <ScalarProperty Name="EmailAddress" ColumnName="EmailAddress" />
                 <ScalarProperty Name="ResidentialAddress" ColumnName="ResidentialAddress" />
@@ -437,13 +434,13 @@
                 <ScalarProperty Name="LoginId" ColumnName="LoginId" />
                 <ScalarProperty Name="EmailID" ColumnName="EmailID" />
                 <ScalarProperty Name="Password" ColumnName="Password" />
+                <ScalarProperty Name="Role" ColumnName="Role" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
           <EntitySetMapping Name="User_Roles">
             <EntityTypeMapping TypeName="PMS_Model.User_Roles">
               <MappingFragment StoreEntitySet="User_Roles">
-                <ScalarProperty Name="RoleID" ColumnName="RoleID" />
                 <ScalarProperty Name="RoleCode" ColumnName="RoleCode" />
                 <ScalarProperty Name="RoleDescription" ColumnName="RoleDescription" />
               </MappingFragment>
@@ -452,11 +449,12 @@
           <EntitySetMapping Name="User_Token">
             <EntityTypeMapping TypeName="PMS_Model.User_Token">
               <MappingFragment StoreEntitySet="User_Token">
-                <ScalarProperty Name="EmailID" ColumnName="EmailID" />
                 <ScalarProperty Name="AccessID" ColumnName="AccessID" />
-                <ScalarProperty Name="TokenExpiration" ColumnName="TokenExpiration" />
-                <ScalarProperty Name="RefreshToken" ColumnName="RefreshToken" />
+                <ScalarProperty Name="EmailID" ColumnName="EmailID" />
                 <ScalarProperty Name="AccessToken" ColumnName="AccessToken" />
+                <ScalarProperty Name="RefreshToken" ColumnName="RefreshToken" />
+                <ScalarProperty Name="TokenExpiration" ColumnName="TokenExpiration" />
+                <ScalarProperty Name="Role" ColumnName="Role" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

@@ -61,8 +61,32 @@ namespace PMSMaui.Data.ClientDetails
 		}
 
 
-		//Fetch Client Details By Name and Category
-		public static RestResponse FetchSpecificClientwithCategory(string cname, string ccat)
+        //Fetch Specific Client Details
+        public static RestResponse FetchClientWithEmail(string email)
+        {
+            RestResponse response = new();
+            try
+            {
+                var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+                var options = new RestClientOptions(baseURL)
+                {
+                    MaxTimeout = -1,
+                };
+                var client = new RestClient(options);
+                var request = new RestRequest("/api/clients/email/" + email, Method.Get);
+                request.AddUrlSegment("emailid", email);
+                response = client.ExecuteGet(request);
+            }
+            catch (Exception ex)
+            {
+                response.Content = ex.Message;
+            }
+            return response;
+        }
+
+
+        //Fetch Client Details By Name and Category
+        public static RestResponse FetchSpecificClientwithCategory(string cname, string ccat)
 		{
 			RestResponse response = new();
 			try
@@ -104,7 +128,7 @@ namespace PMSMaui.Data.ClientDetails
 				};
 				var request = new RestRequest("/api/clients/update", Method.Put);
 				request.AddHeader("Content-Type", "application/json");
-				request.AddJsonBody(body);
+				request.AddBody(body);
 				response = client.ExecutePut(request);
 			}
 			catch (Exception ex)

@@ -1,6 +1,7 @@
 ﻿@page "/viewclientdetails"
 @using RestSharp;
 @using Newtonsoft.Json;
+@using PMSMaui.Data.Auth;
 @using PMSMaui.Properties;
 @using PMSMaui.Data.Common;
 @using PMSMaui.Data.ClientDetails;
@@ -49,7 +50,7 @@
 								<td>@client.EmailID</td>
 								<td>@client.Category</td>
 								<td><button class="btn btn-link" @onclick="@(e => OnEditButtonClicked(client.ClientName, client.Category))">Edit</button></td>
-								<td><button class="btn btn-link" @onclick="@(e => onDeleteButtonClicked(client.ClientName))">Delete</button></td>
+								<td><button class="btn btn-link" @onclick="@(e => onDeleteButtonClicked(client.ClientName, client.EmailID))">Delete</button></td>
 							</tr>
 						}
 					}
@@ -109,7 +110,7 @@
 	//----------------- Show Specific Client --------------------------//
 
 
-	void ShowSpecificClient()
+	async void ShowSpecificClient()
 	{
 		clientname = cdObject.ClientName;
 		if(clientname != null)
@@ -118,7 +119,7 @@
 		}
 		else
 		{
-			Messages.DisplayErrorAlert("Please Enter Client Name");
+			await Application.Current.MainPage.DisplayAlert("Failure", "Please Enter Client Name", "Ok");
 		}
 
 	}
@@ -137,7 +138,7 @@
 				navManager.NavigateTo("/createnewclient");
 			});
 		}
-		catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+		catch (Exception ex) { await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok"); }
 	}
 
 
@@ -153,27 +154,47 @@
 		}
 		catch (Exception ex)
 		{
-			Messages.DisplayErrorAlert(ex.Message);
+			await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
 		}
 	}
 
 
 	//Delete Specific Client
-	private async void onDeleteButtonClicked(string cclient)
+	private async void onDeleteButtonClicked(string cclient, string email)
 	{
 		try
 		{
 			bool answer = await Application.Current.MainPage.DisplayAlert("Are you Sure you want to delete " + cclient + " this poor guy?", "Please dont do that!", "Yes", "No");
 			if (answer == true)
 			{
-				RestResponse response = Clients.DeleteClient(cclient);
-				if (response.IsSuccessful == true)
+				RestResponse delclientresponse = Clients.DeleteClient(cclient);
+				if (delclientresponse.IsSuccessful == true)
 				{
-					await Application.Current.MainPage.DisplayAlert("Success", cclient + " Deleted Successfully", "Ok");
+					RestResponse delClientLoginresponse = Accounts.DeleteAuthDetails(email);
+					if (delClientLoginresponse.IsSuccessful == true)
+					{
+						RestResponse delCliTokenResponse = Accounts.RevokeUserToken(email);
+						if (delCliTokenResponse.IsSuccessful == true)
+						{
+							await Application.Current.MainPage.DisplayAlert("Success", cclient + " and Login Deleted Successfully", "Ok");
+						}
+						else if(delCliTokenResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
+						{
+							await Application.Current.MainPage.DisplayAlert("Success", cclient + " and Login Deleted Successfully; No Login Present", "Ok");
+						}
+						else
+                        {
+                            await Application.Current.MainPage.DisplayAlert("Aborted", cclient + " and Login Deleted; Token DELETE FAIL due to " + delCliTokenResponse.ErrorException.ToString(), "Ok");
+                        }
+					}
+					else
+					{
+						await Application.Current.MainPage.DisplayAlert("Aborted", cclient + " Deleted; Login DELETE Failed due to " + delClientLoginresponse.ErrorException.ToString(), "Ok");
+					}
 				}
 				else
 				{
-					await Application.Current.MainPage.DisplayAlert("Aborted", cclient + " Not Deleted as the request failed due to " + response.ErrorException.ToString(), "Ok");
+					await Application.Current.MainPage.DisplayAlert("Aborted", cclient + " Not Deleted as the request failed due to " + delclientresponse.ErrorException.ToString(), "Ok");
 				}
 			}
 			else
@@ -185,8 +206,7 @@
 		catch (Exception ex)
 		{
 			msg = ex.Message.ToString();
-			Messages.DisplayErrorAlert(msg);
-			navManager.NavigateTo($"/error/{msg}");
+			await Application.Current.MainPage.DisplayAlert("Aborted", msg + " Not Deleted", "Ok");
 		}
 	}
 

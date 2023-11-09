@@ -93,7 +93,7 @@
         catch (Exception ex)
         {
             msg = "Inactive";
-            Messages.DisplayErrorAlert(ex.Message.ToString());
+            Application.Current.MainPage.DisplayAlert("Failure", ex.Message.ToString(), "Ok");
         }
 
         base.OnInitialized();

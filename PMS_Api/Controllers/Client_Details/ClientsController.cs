@@ -32,19 +32,48 @@ namespace PMS_Api.Controllers.ClientDetails
 
 		[HttpGet]
 		[Route("api/Clients/{name}")]
-		public async Task<ActionResult<IEnumerable<Client_Details>>> FetchClient_DetailsByName(string name)
+		public async Task<ActionResult<Client_Details>> FetchClientDetailsByName(string name)
 		{
-			string cname = name.ToUpper();
-			var cd = await _context.Client_Details.Where(x => x.ClientName.Contains(cname)).ToListAsync();
-			if (cd == null)
+			try
 			{
-				return NotFound();
+                string cname = name.ToUpper();
+                var cd = await _context.Client_Details.Where(x => x.ClientName.Contains(cname)).FirstOrDefaultAsync();
+                if (cd == null)
+                {
+                    return NotFound();
+                }
+                return cd;
+            }
+			catch
+			{
+				throw;
 			}
-			return cd;
+			
 		}
 
+        [HttpGet]
+        [Route("api/Clients/email/{email}")]
+        public async Task<ActionResult<Client_Details>> FetchClientDetailsByEmail(string email)
+        {
+			try
+			{
+                var cd = await _context.Client_Details.Where(x => x.EmailID.Contains(email.ToUpper())).FirstOrDefaultAsync();
+                if (cd == null)
+                {
+                    return NotFound();
+                }
+                return cd;
+            }
+			catch
+			{
+				throw;
+			}
+           
+        }
 
-		[HttpGet]
+
+
+        [HttpGet]
 		[Route("api/Clients/{name}/{category}")]
 		public async Task<ActionResult<Client_Details>> GetClient_Details(string name, string category)
 		{
@@ -60,7 +89,6 @@ namespace PMS_Api.Controllers.ClientDetails
 		
 		[HttpPut]
 		[Route("api/Clients/Update")]
-        [Authorize]
         public async Task<IActionResult> PutClient_Details([FromBody]Client_Details cd)
 		{
 			var result = await _context.Client_Details.FirstOrDefaultAsync(x => x.ClientName.ToUpper() + x.Category == cd.ClientName.ToUpper() + cd.Category);
@@ -76,7 +104,7 @@ namespace PMS_Api.Controllers.ClientDetails
 					{
 						result.EmailID = cd.EmailID;
 					}
-
+					result.DateCreated = result.DateCreated;
 					result.LastModified = DateTime.Now;
 					_context.Entry(result).State = EntityState.Modified;
 					await _context.SaveChangesAsync();
@@ -90,7 +118,7 @@ namespace PMS_Api.Controllers.ClientDetails
 			{
 				return NotFound();
 			}
-			return CreatedAtAction("FetchClient_DetailsByName", new { name = result.ClientName }, cd);
+			return CreatedAtAction("FetchClientDetailsByName", new { name = result.ClientName }, cd);
 		}
 
 		[HttpPost]

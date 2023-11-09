@@ -23,6 +23,32 @@ namespace PMS_Api.Controllers.Token
         private readonly IConfiguration configuration = config;
         private readonly PMS_Entities _context = context;
 
+
+		//Get All User Details
+		[ApiExplorerSettings(IgnoreApi = true)]
+		[HttpGet]
+		[Route("api/Auth/")]
+		public async Task<IActionResult> GetAuthDetails()
+		{
+			var user = await _context.User_Auth.ToListAsync();
+			if (user == null) { return NotFound(); }
+			else { return Ok(user); }
+		}
+
+
+		//Get the User Details based on the Email ID
+		[ApiExplorerSettings (IgnoreApi = true)]
+        [HttpGet]
+        [Route("api/Auth/{email}")]
+        public async Task<IActionResult> GetAuthByEmail(string email)
+        {
+			var user = await _context.User_Auth.FirstOrDefaultAsync(x => x.EmailID.ToUpper().Equals(email.ToUpper()));
+			if (user == null) { return NotFound(); }
+			else { return Ok(user); }
+		}
+
+
+
         //Create a Session Access Token for the User based on Authentication
         [AllowAnonymous]
         [Route("api/Auth")]
@@ -87,11 +113,16 @@ namespace PMS_Api.Controllers.Token
                         {
                             //if the Access Token is Invalid, then Revoke the Access Token
                             _context.User_Token.Where(x => x.AccessID.Equals(result.AccessID)).ExecuteDelete();
-                            await _context.SaveChangesAsync();
-                            result.AccessID = "AccessID_" + Guid.NewGuid();
-                            _context.Entry(result).State = EntityState.Added;
-                            await _context.SaveChangesAsync();
-                            return Ok(result);
+                            var deltoken = await _context.SaveChangesAsync();
+							System.Threading.Thread.Sleep(3000);
+							if (deltoken == 0) { return BadRequest("Error in Deleting the Token"); }
+                            else
+                            {
+								result.AccessID = "AccessID_" + Guid.NewGuid();
+								_context.Entry(result).State = EntityState.Added;
+								await _context.SaveChangesAsync();
+								return Ok(result);
+							}                           
                         }
                     }
                 }
@@ -107,10 +138,11 @@ namespace PMS_Api.Controllers.Token
             }  
         }
 
+
+
         //Refresh the Access Token based on the Refresh Token
         [HttpPost]
         [Route("api/Auth/RefreshToken")]
-
         public async Task<IActionResult> RefreshToken([FromBody]RefreshTokenModel rtm)
         {
             //Check if the Email ID and Refresh Token is not Null
@@ -182,20 +214,32 @@ namespace PMS_Api.Controllers.Token
         }
 
 
+
+
         //Revoke the Access Token based on the Email ID and Delete the Record from the User_Token Table
         [HttpPost]
         [Route("api/Auth/Revoke/{email}")]
         public async Task<IActionResult> RevokeByEmail(string email)
         {
-            var _userdata = await _context.User_Token.FirstOrDefaultAsync(x => x.EmailID.ToUpper().Equals(email.ToUpper()));
-            if (_userdata == null) { return BadRequest("Invalid user name"); }
-            else
+            try
             {
-                _context.Entry(_userdata).State = EntityState.Deleted;
-                _context.User_Token.Where(x => x.AccessID.Equals(_userdata.AccessID)).ExecuteDelete();
-                return NoContent();
-            } 
+				var _userdata = await _context.User_Token.FirstOrDefaultAsync(x => x.EmailID.ToUpper().Equals(email.ToUpper()));
+				if (_userdata == null) { return NotFound("User Not Found"); }
+				else
+				{
+					_context.Entry(_userdata).State = EntityState.Deleted;
+					_context.User_Token.Where(x => x.AccessID.Equals(_userdata.AccessID)).ExecuteDelete();
+					return NoContent();
+				}
+			}
+            catch
+            {
+                throw;
+            }
+           
         }
+
+
 
 
         //Revoke all the Access Tokens and Delete the Records from the User_Token Table
@@ -239,6 +283,7 @@ namespace PMS_Api.Controllers.Token
                         user.LoginId = "Login_" + Guid.NewGuid();
                         user.EmailID = user.EmailID.ToUpper();
                         user.Password = Cryptography.HashPassword(user.Password);
+                        user.ClientName = user.ClientName.ToUpper();
                         _context.Entry(user).State = EntityState.Added;
                         await _context.SaveChangesAsync();
                         return Ok(user.ToJson());
@@ -259,6 +304,60 @@ namespace PMS_Api.Controllers.Token
                 throw;
             }
         }
+
+        [HttpDelete]
+        [Route("api/User/Delete/{email}")]
+        public async Task<IActionResult> DeleteLogin(string email)
+        {
+			try
+            {
+				var user = await _context.User_Auth.FirstOrDefaultAsync(x => x.EmailID.ToUpper().Equals(email.ToUpper()));
+				if (user == null) { return NotFound(); }
+				else
+                {
+					_context.Entry(user).State = EntityState.Deleted;
+					_context.User_Auth.Where(x => x.LoginId.Equals(user.LoginId)).ExecuteDelete();
+					return NoContent();
+				}
+			}
+			catch (Exception e)
+            {
+				return BadRequest(e.Message);
+				throw;
+			}
+		}
+
+        [HttpPut]
+        [Route("api/User/Update/{email}")]
+        public async Task<IActionResult> UpdateLogin(string email, [FromBody]User_Auth user)
+        {
+            try
+            {
+				if (user != null)
+				{
+					var result = await _context.User_Auth.FirstOrDefaultAsync(x => x.EmailID.ToUpper().Equals(email.ToUpper()));
+					if (result == null) { return NotFound(); }
+					else
+					{
+						result.ClientName = user.ClientName.ToUpper();
+						result.Password = Cryptography.HashPassword(user.Password);
+						result.Role = user.Role;
+						_context.Entry(result).State = EntityState.Modified;
+						await _context.SaveChangesAsync();
+						return Ok(result.ToJson());
+					}
+				}
+				else
+				{
+					return BadRequest("User is Null");
+				}
+			}
+			catch (Exception e)
+			{
+				return BadRequest(e.Message);
+				throw;
+			}
+		}
 
         //-----------------------------------------------------------Private Methods-----------------------------------------------------------//
         //Create Access Token Method

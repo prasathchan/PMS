@@ -60,5 +60,89 @@ namespace PMSMaui.Data.Auth
             }
             return response;
         }
-    }
+
+		public static RestResponse GetByEmail(string email)
+		{
+			RestResponse response = new();
+			try
+			{
+				var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+				var options = new RestClientOptions(baseURL)
+				{
+					MaxTimeout = -1,
+				};
+				var client = new RestClient(options);
+				var request = new RestRequest("/api/Auth/" + email, Method.Get);
+				response = client.ExecuteGet(request);
+			}
+			catch (Exception ex)
+			{
+				response.Content = ex.Message;
+			}
+			return response;
+		}
+
+        public static RestResponse GetAuthDetails()
+        {
+            RestResponse response = new();
+			try
+            {
+				var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+				var options = new RestClientOptions(baseURL)
+                {
+					MaxTimeout = -1,
+				};
+				var client = new RestClient(options);
+				var request = new RestRequest("/api/Auth", Method.Get);
+				response = client.ExecuteGet(request);
+			}
+			catch (Exception ex)
+            {
+				response.Content = ex.Message;
+			}
+			return response;
+        }
+
+        public static RestResponse DeleteAuthDetails(string email)
+        {
+            RestResponse response = new();
+            try
+            {
+                var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+                var options = new RestClientOptions(baseURL)
+                {
+                    MaxTimeout = -1,
+                };
+                var client = new RestClient(options);
+                var request = new RestRequest("api/User/Delete/" + email, Method.Delete);
+                response = client.ExecuteDelete(request);
+            }
+            catch (Exception ex)
+            {
+                response.Content = ex.Message;
+            }
+            return response;
+        }
+
+        public static RestResponse RevokeUserToken(string email)
+        {
+            RestResponse response = new();
+            try
+            {
+                var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+                var options = new RestClientOptions(baseURL)
+                {
+                    MaxTimeout = -1,
+                };
+                var client = new RestClient(options);
+                var request = new RestRequest("api/Auth/Revoke/"+ email, Method.Post);
+                response = client.ExecutePost(request);
+            }
+            catch (Exception ex)
+            {
+                response.Content = ex.Message;
+            }
+            return response;
+        }
+	}
 }

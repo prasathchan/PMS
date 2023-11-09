@@ -205,8 +205,10 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Models\CustomModel\CreateAdminAccount.cs" />
     <Compile Include="Models\CustomModel\Cryptography.cs" />
     <Compile Include="Models\CustomModel\CustomAuthenticationModel.cs" />
+    <Compile Include="Models\CustomModel\DeleteDoctor.cs" />
     <Compile Include="Models\CustomModel\LoginModel.cs" />
     <Compile Include="Models\CustomModel\RefreshTokenModel.cs" />
     <Compile Include="Models\DataModel\Client_Billing.cs">

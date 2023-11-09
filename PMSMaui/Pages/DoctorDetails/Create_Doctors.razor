@@ -1,9 +1,23 @@
-﻿@page "/createdoctors"
+﻿@page "/createdoctor"
+@using RestSharp
+@using Newtonsoft.Json
+@using PMSMaui.Data.Auth
+@using PMSMaui.Properties
+@using PMSMaui.Data.Common
+@using System.Security.Claims
+@using PMSMaui.Data.ClientDetails
+@using PMSMaui.Data.DoctorDetails
+@using PMS_Library.Models.DataModel
+@using System.IdentityModel.Tokens.Jwt
+@using Microsoft.AspNetCore.Components.Authorization
+
 @inject NavigationManager navManager;
+@inject AuthenticationStateProvider authStateProvider
 
 
 @code {
     private string DoctorName { get; set; }
+    private string HospitalID { get; set; }
     private string SpecialityCode { get; set; }
     private string Phone { get; set; }
     private string EmailAddress { get; set; }
@@ -12,13 +26,166 @@
     private string LoginEnabled { get; set; }
     private string Status { get; set; }
 
-    private PMS_Library.Models.DataModel.Doctor_Details docObject = new();
+    private string msg { get; set; }
+    private string name { get; set; }
+    private string role { get; set; }
 
+    private Doctor_Details docObject = new();
+    private Doctor_Specialty specObject = new();
+    private Client_Details clientObject = new();
+    private User_Auth authObject = new();
+
+    IList<Client_Details> clientList;
+    IList<Doctor_Specialty> specList;
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        try
+        {
+            var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+            if (DataConnection.ServerStatus(baseURL) == false)
+            {
+                specList = null;
+                msg = "Server is Not Running";
+            }
+            else
+            {
+                var authstate = await authStateProvider.GetAuthenticationStateAsync();
+                name = authstate.User.Claims.Where(c => c.Type == ClaimTypes.Name)
+                                   .Select(c => c.Value).SingleOrDefault();
+                role = authstate.User.Claims.Where(c => c.Type == ClaimTypes.Role)
+                                   .Select(c => c.Value).SingleOrDefault();
+
+                await Task.Run(LoadClients);
+            }
+        }
+        catch (Exception ex)
+        {
+            msg = ex.Message.ToString();
+            navManager.NavigateTo($"/error/{msg}");
+        }
+        await base.OnInitializedAsync();
+    }
+
+    private void LoadClients()
+    {
+        System.Threading.Thread.Sleep(3000);
+        authObject = JsonConvert.DeserializeObject<User_Auth>(Data.Auth.Accounts.GetByEmail(name).Content);
+        if (authObject.ClientName == null)
+        {
+            clientList = JsonConvert.DeserializeObject<IList<Client_Details>>(Clients.FetchAllClients().Content);
+            specList = JsonConvert.DeserializeObject<IList<Doctor_Specialty>>(Speciality.FetchDoctorSpecialty().Content);
+        }
+        else
+        {
+            clientObject = JsonConvert.DeserializeObject<Client_Details>(Clients.FetchSpecificClient(authObject.ClientName).Content);
+            specList = JsonConvert.DeserializeObject<IList<Doctor_Specialty>>(Speciality.FetchDoctorSpecialty().Content); 
+        }
+    }
+
+
+    protected async Task AddDoctorFromForm(EditContext clientContext)
+    {
+        bool isValid = clientContext.Validate();
+        try
+        {
+            //check whether the form is valid or not
+            if (isValid == true)
+            {
+                DateTime JoinDate = Convert.ToDateTime(clientContext.Model.GetType().GetProperty("JoiningDate").GetValue(clientContext.Model));
+                bool LoginEnabled = Convert.ToBoolean(clientContext.Model.GetType().GetProperty("LoginEnabled").GetValue(clientContext.Model));
+                if(clientObject.HospitalID != null)
+                {
+                    HospitalID = clientObject.HospitalID;
+                }
+                else
+                {
+                    HospitalID = clientContext.Model.GetType().GetProperty("HospitalID").GetValue(clientContext.Model).ToString();
+                }
+                var docDtl = new Doctor_Details
+                {
+                    HospitalID = HospitalID,
+                    DoctorName = clientContext.Model.GetType().GetProperty("DoctorName").GetValue(clientContext.Model).ToString(),
+                    SpecialityCode = clientContext.Model.GetType().GetProperty("SpecialityCode").GetValue(clientContext.Model).ToString(),
+                    Phone = clientContext.Model.GetType().GetProperty("Phone").GetValue(clientContext.Model).ToString(),
+                    EmailAddress = clientContext.Model.GetType().GetProperty("EmailAddress").GetValue(clientContext.Model).ToString(),
+                    ResidentialAddress = clientContext.Model.GetType().GetProperty("ResidentialAddress").GetValue(clientContext.Model).ToString(),
+                    JoiningDate = Convert.ToDateTime(clientContext.Model.GetType().GetProperty("JoiningDate").GetValue(clientContext.Model)),
+                    LoginEnabled = Convert.ToBoolean(clientContext.Model.GetType().GetProperty("LoginEnabled").GetValue(clientContext.Model)),
+                    Status = "Active"
+                };
+
+                //Add Doctor Details
+                Task<RestResponse> TdocResponse = Task.Run(() => Doctors.PostDoctor(docDtl));
+                RestResponse restResponse = await TdocResponse;
+
+                //If Doctor Details Added Successfully
+                if (restResponse.IsSuccessful)
+                {
+                    //If Login Enabled is True
+                    if(docDtl.LoginEnabled == true)
+                    {
+                        var user = new User_Auth
+                            {
+                                EmailID = docDtl.EmailAddress,
+                                Password = docDtl.Phone,
+                                Role = "Doctor",
+                                ClientName = clientObject.ClientName,
+                            };
+
+                        //Add Login Account
+                        Task<RestResponse> response = Task.Run(() => Accounts.Register(user));
+                        var savResponse = await response;
+
+                        //If Successfully Added Login Account
+                        if (savResponse.IsSuccessful)
+                        {
+                            await Application.Current.MainPage.DisplayAlert("Success", "Doctor Registered With Login Account Successfully", "Ok");
+                            navManager.NavigateTo("/viewdoctors", true);
+                        }
+                        else //If Failed to Add Login Account
+                        {
+                            await Application.Current.MainPage.DisplayAlert("Failure", savResponse.Content, "Ok");
+                            navManager.NavigateTo("/viewdoctors", true);
+                        }     
+                    }
+                    else //If Login Enabled is False
+                    {
+                        await Application.Current.MainPage.DisplayAlert("Success", "Doctor Registered Successfully", "Ok");
+                        navManager.NavigateTo("/viewdoctors", true);
+                    }
+                }
+                else //If Failed to Add Doctor Details
+                {
+                    await Application.Current.MainPage.DisplayAlert("Failure", "Doctor Registration Failed", "Ok");
+                    navManager.NavigateTo("/viewdoctors", true);
+                }
+            }
+            else //If Form is Invalid
+            {
+                await Application.Current.MainPage.DisplayAlert("Failure", "Doctor Registration Failed", "Ok");
+                navManager.NavigateTo("/viewdoctors", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            msg = ex.Message.ToString();
+            navManager.NavigateTo($"/error/{msg}");
+        }
+    }
+ }
+
+<h3>Create New Doctor</h3>
+
+@if (specList == null)
+{
+    <div class="spinner"></div>
 }
-
-<h3>Create_Doctors</h3>
-
-<EditForm Model="@docObject" >
+else
+{
+    <EditForm Model="@docObject" OnValidSubmit="@AddDoctorFromForm">
+    
     <div class="form-group row">
         <label for="lblDoctorName" class="col-sm-2 col-form-label">Doctor Name</label>
         <div class="col-sm-10">
@@ -28,11 +195,84 @@
     </div>
 
     <div class="form-group row">
-        <label for="lblSpecialityName" class="col-sm-2 col-form-label">Speciality</label>
+        <label for="lblDocSpeciality" class="col-sm-2 col-form-label">Speciality</label>
         <div class="col-sm-10">
-            <InputText id="txtSpecialityCode" class="form-control" @bind-Value="docObject.SpecialityCode" />
-            <ValidationMessage For="@(()=>docObject.SpecialityCode)" />
+            <InputSelect id="selDocSpec" class="form-control" @bind-Value="docObject.SpecialityCode">
+                <option selected value="-1">Please Select the Speciality</option>
+                @foreach (var item in specList)
+                {
+                    <option value="@item.SpecialityID">@item.SpecialityName</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(()=>specObject.SpecialityName)" />
         </div>
     </div>
+
+    <div class="form-group row">
+        <label for="lblPhone" class="col-sm-2 col-form-label">Phone</label>
+        <div class="col-sm-10">
+            <InputText id="txtPhone" class="form-control" @bind-Value="docObject.Phone" />
+            <ValidationMessage For="@(()=>docObject.Phone)" />
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="lblEmailAddress" class="col-sm-2 col-form-label">Email Address</label>
+        <div class="col-sm-10">
+            <InputText id="txtEmailAddress" class="form-control" @bind-Value="docObject.EmailAddress" />
+            <ValidationMessage For="@(()=>docObject.EmailAddress)" />
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="lblResidentialAddress" class="col-sm-2 col-form-label">Residential Address</label>
+        <div class="col-sm-10">
+            <InputText id="txtResidentialAddress" class="form-control" @bind-Value="docObject.ResidentialAddress" />
+            <ValidationMessage For="@(()=>docObject.ResidentialAddress)" />
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="lblJoiningDate" class="col-sm-2 col-form-label">Joining Date</label>
+        <div class="col-sm-10">
+            <InputDate id="txtJoiningDate" class="form-control" @bind-Value="docObject.JoiningDate" />
+            <ValidationMessage For="@(()=>docObject.JoiningDate)" />
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="lblLoginEnabled" class="col-sm-2 col-form-label">Login Enabled</label>
+        <div class="col-sm-10">
+            <InputCheckbox id="chkLoginEnabled" class="form-control" @bind-Value="docObject.LoginEnabled" />
+            <ValidationMessage For="@(()=>docObject.LoginEnabled)" />
+        </div>
+    </div>
+    @if(clientObject.HospitalID==null)
+    {
+            <div class="form-group row">
+                <label for="lblHospitalSelect" class="col-sm-2 col-form-label">Select Hospital</label>
+                <div class="col-sm-10">
+                    <InputSelect id="selhospital" class="form-control" @bind-Value="docObject.HospitalID">
+                        <option selected value="-1">Please Select the Hospital</option>
+                        @foreach (var client in clientList)
+                        {
+                            <option value="@client.HospitalID">@client.ClientName</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(()=>specObject.SpecialityName)" />
+                </div>
+            </div>
+            
+    }
+
+    <div class="form-group row">
+        <div class="col-sm-10">
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+    </div>
+
 </EditForm>
+
+}
+
 

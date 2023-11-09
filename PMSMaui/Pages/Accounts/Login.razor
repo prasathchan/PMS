@@ -1,13 +1,14 @@
 ﻿@page "/login"
-@using RestSharp;
-@using Data.Auth;
-@using Properties;
-@using Data.Common;
-@using Newtonsoft.Json;
+@using RestSharp
+@using Data.Auth
+@using Properties
+@using Data.Common
+@using Newtonsoft.Json
 @using System.Security.Claims
-@using PMS_Library.Models.DataModel;
-@using PMS_Library.Models.CustomModel;
-@using System.IdentityModel.Tokens.Jwt;
+@using PMSMaui.Data.DoctorDetails
+@using PMS_Library.Models.DataModel
+@using PMS_Library.Models.CustomModel
+@using System.IdentityModel.Tokens.Jwt
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject NavigationManager navManager;
@@ -57,43 +58,69 @@
     protected async Task LoginValidate(EditContext clientContext)
     {
         bool isValid = clientContext.Validate();
+        var phone = string.Empty;
+
         try
         {
             if (isValid == true)
             {
                 login.EmailID = clientContext.Model.GetType().GetProperty("EmailID").GetValue(clientContext.Model).ToString();
                 login.Password = clientContext.Model.GetType().GetProperty("Password").GetValue(clientContext.Model).ToString();
-                var lm = new LoginModel()
-                {
-                    EmailID = login.EmailID.ToUpper(),
-                    Password = login.Password
-                };
-                Task<RestResponse> response = Task.Run(() => Accounts.Login(lm));
-                var savResponse = await response;
 
-                if (savResponse.IsSuccessful)
+                var accDtl = JsonConvert.DeserializeObject<CustomAuthenticationModel>(Accounts.GetByEmail(login.EmailID.ToUpper()).Content);
+                var Role = accDtl.Role;
+                if(Role != null)
                 {
-                    var getToken = JsonConvert.DeserializeObject<CustomAuthenticationModel>(savResponse.Content);
-                    var userToken = GetUserClaims(getToken.AccessToken);
-                    if (userToken == null)
+                    if (Role == "Doctor")
                     {
-                        Messages.DisplayErrorAlert("Invalid User");
-                        return;
+                        var docDtl = JsonConvert.DeserializeObject<Doctor_Details>(Doctors.FetchDoctorByEmail(login.EmailID.ToUpper()).Content);
+                        phone = "";
                     }
-                    var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
-                    await customAuthStateProvider.UpdateAuthenticationState(getToken);
-                    Messages.DisplaySuccessAlert("Login Successful");
-                    navManager.NavigateTo("/");
                 }
                 else
                 {
-                    Messages.DisplayErrorAlert("Invalid Login Attempt");
+                    await Application.Current.MainPage.DisplayAlert("Failure", "Invalid User", "Ok");
+                    return;
+                }
+
+                if(phone != login.Password)
+                {
+                    var lm = new LoginModel()
+                        {
+                            EmailID = login.EmailID.ToUpper(),
+                            Password = login.Password
+                        };
+                    Task<RestResponse> response = Task.Run(() => Accounts.Login(lm));
+                    var savResponse = await response;
+
+                    if (savResponse.IsSuccessful)
+                    {
+                        var getToken = JsonConvert.DeserializeObject<CustomAuthenticationModel>(savResponse.Content);
+                        var userToken = GetUserClaims(getToken.AccessToken);
+                        if (userToken == null)
+                        {
+                            await Application.Current.MainPage.DisplayAlert("Failure", "Invalid User", "Ok");
+                            return;
+                        }
+                        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+                        await customAuthStateProvider.UpdateAuthenticationState(getToken);
+                        await Application.Current.MainPage.DisplayAlert("Success", "Login Successful", "Ok");
+                        navManager.NavigateTo("/");
+                    }
+                    else
+                    {
+                        await Application.Current.MainPage.DisplayAlert("Failure", "Invalid Login Attempt", "Ok");
+                    }
+                }
+                else
+                {
+                    await Application.Current.MainPage.DisplayAlert("Failure", "Reset Your Password", "Ok");
                 }
             }
         }
         catch (Exception ex)
         {
-            Messages.DisplayErrorAlert(ex.Message);
+            await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
         }
     }
 }
@@ -120,7 +147,7 @@
                                 <div class="form-group row">
                                     <label for="lblPassword" class="col-sm-2 col-form-label">Password</label>
                                     <div class="col-sm-10">
-                                        <InputText id="txtPassword" class="form-control" @bind-Value="login.Password" />
+                                        <InputText id="txtPassword" class="form-control" type="password" @bind-Value="login.Password" />
                                         <ValidationMessage For="@(()=>login.Password)" />
                                     </div>
                                 </div>

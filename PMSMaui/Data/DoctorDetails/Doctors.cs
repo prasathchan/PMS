@@ -1,10 +1,12 @@
 ﻿using RestSharp;
 using PMSMaui.Properties;
+using PMS_Library.Models.DataModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using PMS_Library.Models.CustomModel;
 
 namespace PMSMaui.Data.DoctorDetails
 {
@@ -53,7 +55,52 @@ namespace PMSMaui.Data.DoctorDetails
 			return response;
 		}
 
-		public static RestResponse PostDoctors(PMS_Library.Models.DataModel.Doctor_Details doctor_Details)
+        public static RestResponse FetchDoctorByEmail(string email)
+        {
+            RestResponse response = new();
+            try
+            {
+                var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+                var options = new RestClientOptions(baseURL)
+                {
+                    MaxTimeout = -1,
+                };
+                var client = new RestClient(options);
+                var request = new RestRequest("/api/doctors/email/{email}", Method.Get);
+                request.AddUrlSegment("email", email);
+                response = client.ExecuteGet(request);
+            }
+            catch (Exception ex)
+            {
+                response.Content = ex.Message;
+            }
+            return response;
+        }
+
+		public static RestResponse FetchDoctorsByHospitalId(string hospitalid)
+		{
+			RestResponse response = new();
+			try
+			{
+				var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+				var options = new RestClientOptions(baseURL)
+				{
+					MaxTimeout = -1,
+				};
+				var client = new RestClient(options);
+				var request = new RestRequest("/api/doctors/hospital/"+hospitalid, Method.Get);
+				request.AddUrlSegment("HospitalID", hospitalid);
+				response = client.ExecuteGet(request);
+			}
+			catch (Exception ex)
+			{
+				response.Content = ex.Message;
+			}
+			return response;
+		}
+
+
+		public static RestResponse PostDoctor(Doctor_Details doctor_Details)
 		{
 			RestResponse response = new();
 			try
@@ -73,6 +120,34 @@ namespace PMSMaui.Data.DoctorDetails
 				response.Content = ex.Message;
 			}
 			return response;
+		}
+
+		public static RestResponse DeleteDoctor(string name, string email)
+		{
+			RestResponse response = new();
+			try
+			{
+				var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+				var options = new RestClientOptions(baseURL)
+				{
+					MaxTimeout = -1,
+				};
+				var client = new RestClient(options);
+				var request = new RestRequest("/api/doctors/delete", Method.Delete);
+				var body = new DeleteDoctor
+				{
+					DoctorName = name,
+					EmailAddress = email
+				};
+				request.AddJsonBody(body);
+				response = client.ExecuteDelete(request);
+			}
+			catch (Exception ex)
+			{
+				response.Content = ex.Message;
+			}
+			return response;
+
 		}
 	}
 }

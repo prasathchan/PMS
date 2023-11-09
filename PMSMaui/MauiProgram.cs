@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PMSMaui.Data.Auth;
-using PMSMaui.Data;
+
 
 namespace PMSMaui
 {
@@ -19,10 +20,10 @@ namespace PMSMaui
 				});
 
 			builder.Services.AddMauiBlazorWebView();
-            builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
-            builder.Services.AddAuthorizationCore();
+			builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
+			builder.Services.AddAuthorizationCore();
 #if DEBUG
-            builder.Services.AddBlazorWebViewDeveloperTools();
+			builder.Services.AddBlazorWebViewDeveloperTools();
 			builder.Logging.AddDebug();
 #endif
 

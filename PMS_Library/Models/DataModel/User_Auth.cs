@@ -20,5 +20,6 @@ namespace PMS_Library.Models.DataModel
         public string EmailID { get; set; }
         public string Password { get; set; }
         public string Role { get; set; }
+        public string ClientName { get; set; }
     }
 }

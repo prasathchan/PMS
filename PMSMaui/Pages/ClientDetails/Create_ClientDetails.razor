@@ -1,14 +1,17 @@
 ﻿@page "/createnewclient"
 @using RestSharp;
 @using Newtonsoft.Json;
+@using PMSMaui.Data.Auth;
 @using PMSMaui.Data.Common;
+@using PMSMaui.Data.DoctorDetails;
 @using PMSMaui.Data.ClientDetails;
-@using PMSMaui.Data.ClientCategories;
 @using PMS_Library.Models.DataModel;
+@using PMS_Library.Models.CustomModel;
+@using PMSMaui.Data.ClientCategories;
 
 @inject NavigationManager navManager;
 
-<h3>Create - Client Details</h3>
+<h3>Create New Client</h3>
 <h4></h4>
 
 @code {
@@ -17,12 +20,18 @@
 	private string PhoneNo { get; set; }	
 	private string Emailid { get; set; }	
 	private string Category { get; set; }
+	private string Password { get; set; }
 
-	private Client_Details cdObject = new();
+	private CreateAdminAccount cdObject = new();
+
 
 	IList<Client_Categories> catList = new List<Client_Categories>();
 	private Client_Categories ccObject = new();
 	private Categories catClass = new();
+
+
+
+
 
 	//Initialize
 	protected override void OnInitialized()
@@ -33,7 +42,7 @@
 		}
 		catch (Exception ex)
 		{
-			Messages.DisplayErrorAlert(ex.Message);
+			Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
 		}
 		base.OnInitialized();
 	}
@@ -47,34 +56,59 @@
 			{
 				ClientName = clientContext.Model.GetType().GetProperty("ClientName").GetValue(clientContext.Model).ToString();
 				PhoneNo = clientContext.Model.GetType().GetProperty("Phone").GetValue(clientContext.Model).ToString();
-				Emailid = clientContext.Model.GetType().GetProperty("EmailID").GetValue(clientContext.Model).ToString();
+				Emailid = "admin@"+ClientName+".com";
+				Password = clientContext.Model.GetType().GetProperty("Password").GetValue(clientContext.Model).ToString();
 				Category = clientContext.Model.GetType().GetProperty("Category").GetValue(clientContext.Model).ToString();
-				Task<RestResponse> TcliResponse = Task.Run(() => Clients.AddClient(ClientName, Emailid, PhoneNo, Category));
+
+				Task<RestResponse> TcliResponse = Task.Run(() => Clients.AddClient(ClientName, Emailid.ToUpper(), PhoneNo, Category));
 				RestResponse restResponse = await TcliResponse;
+
+				var clidetails = JsonConvert.DeserializeObject<Client_Details>(restResponse.Content);
+
+				//If Client Added Successfully, then add the user details
 				if (restResponse.IsSuccessful)
 				{
-					Messages.DisplaySuccessAlert("Client Added Successfully");
-					navManager.NavigateTo("/viewclientdetails", true);
+					// Add the Client Super User
+					var user = new User_Auth
+						{
+							EmailID = Emailid,
+							Password = Password,
+							Role = "ClientSuper",
+							ClientName = ClientName
+						};
+
+					Task<RestResponse> response = Task.Run(() => Accounts.Register(user));
+					var savResponse = await response; 
+
+					if(savResponse.IsSuccessful)
+					{
+						await Application.Current.MainPage.DisplayAlert("Success", "Client Added Successfully with Client Super Account", "Ok");
+						navManager.NavigateTo("/viewclientdetails", true);
+                    }
+                    else
+                    {
+						await Application.Current.MainPage.DisplayAlert("Failure", savResponse.Content, "Ok");
+                    }
 				}
 				else
 				{
-					Messages.DisplayErrorAlert(restResponse.ErrorMessage);
+					await Application.Current.MainPage.DisplayAlert("Failure", restResponse.Content, "Ok");
 				}				
 			}
 			else
 			{
-				Messages.DisplayErrorAlert("Please Enter Valid Details");
+				await Application.Current.MainPage.DisplayAlert("Failure", "Please Enter Valid Details", "Ok");
 			}
 		}
 		catch(Exception ex)
         {
-            Messages.DisplayErrorAlert(ex.Message);
+			await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
         }
 	}
 }
 
 @{
-	try
+	@try
 	{
 		<EditForm Model="@cdObject" OnValidSubmit="@AddClient">
 			<DataAnnotationsValidator />
@@ -82,7 +116,6 @@
 			<div class="form-group row">
 				<label for="lblClientName" class="col-sm-2 col-form-label">Client Name</label>
 				<div class="col-sm-10">
-					<!-- <InputText id="txtClientName" class="form-control" bind-Value="cdObject.ClientName" oninput="((e) => { ClientName=(string)e.Value;})" /> -->
 					<InputText id="txtClientName" class="form-control" @bind-Value="cdObject.ClientName" />
 					<ValidationMessage For="@(()=>cdObject.ClientName)" />
 				</div>
@@ -97,10 +130,10 @@
 			</div>
 
 			<div class="form-group row">
-				<label for="lblEmail" class="col-sm-2 col-form-label">Email ID</label>
+				<label for="lblPassword" class="col-sm-2 col-form-label">Set Admin Password</label>
 				<div class="col-sm-10">
-					<InputText id="txtEmailID" class="form-control" @bind-Value="cdObject.EmailID" />
-					<ValidationMessage For="@(()=>cdObject.EmailID)" />
+					<InputText id="txtPhone" class="form-control" @bind-Value="cdObject.Password" />
+					<ValidationMessage For="@(() => cdObject.Phone)" />
 				</div>
 			</div>
 
@@ -127,7 +160,7 @@
 	}
 	catch(Exception ex)
 	{
-		Messages.DisplayErrorAlert(ex.Message);
+		Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
 	}
 }
 

@@ -1,5 +1,156 @@
-﻿<h3>View_UserLoginDetails</h3>
+﻿@page "/viewuserlogindetails"
+@using PMSMaui.Data.Common
+@using PMSMaui.Properties
+@using RestSharp
+@using Newtonsoft.Json
+@using PMSMaui.Data.Auth
+@using PMS_Library.Models.DataModel
+
+@inject NavigationManager navManager;
+
+<h3>User Login Details</h3>
 
 @code {
+	IList<User_Auth> userAuthList;
 
+	private string msg { get; set; }
+
+	protected override void OnInitialized()
+	{
+		try
+		{
+			var baseURL = DeviceInfo.Platform == DevicePlatform.Android ? Resources.apk_baseURL : Resources.win_baseURL;
+			if (DataConnection.ServerStatus(baseURL) == false)
+			{
+				userAuthList = null;
+				msg = "Server is Not Running";
+			}
+			else
+			{
+				userAuthList = JsonConvert.DeserializeObject<IList<User_Auth>>(Accounts.GetAuthDetails().Content);
+				msg = "Server is Running";
+			}
+		}
+		catch (Exception ex)
+		{
+			msg = ex.Message.ToString();
+			navManager.NavigateTo($"/error/{msg}");
+		}
+		base.OnInitialized();
+	}
+
+	//Register New User
+	private async void OnClickRegisterUser()
+	{
+		try
+		{
+			await Task.Run(() =>
+			{
+				navManager.NavigateTo("/createlogindetail");
+			});
+		}
+		catch (Exception ex) { await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok"); }
+	}
+
+	// //Edit Registered Users
+	// private async void OnEditButtonClicked(string email, string pass)
+	// {
+	// 	try
+	// 	{
+	// 		await Task.Run(() =>
+	// 		{
+	// 			navManager.NavigateTo($"/editlogindetail/{email}/{pass}");
+	// 		});
+	// 	}
+	// 	catch (Exception ex)
+	// 	{
+	// 		await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
+	// 	}
+	// }
+
+	//Delete Registered Users
+
+
+	private async void onDeleteButtonClicked(string email)
+	{
+		try
+		{
+			bool answer = await Application.Current.MainPage.DisplayAlert("Are you Sure you want to delete " + email + " this poor guy?", "Please dont do that!", "Yes", "No");
+			if (answer == true)
+			{
+				RestResponse delResponse = Accounts.DeleteAuthDetails(email);
+				if (delResponse.IsSuccessful == true)
+				{
+					RestResponse revResponse = Accounts.RevokeUserToken(email);
+					if (revResponse.IsSuccessful == true)
+					{
+						await Application.Current.MainPage.DisplayAlert("Success", "User Deleted Successfully", "Ok");
+						navManager.NavigateTo("/viewuserlogindetails");
+					}
+					else
+					{
+						await Application.Current.MainPage.DisplayAlert("Success", "User Deleted Successfully; But Token Deletion FAIL", "Ok");
+					}
+				}
+                else
+                {
+                    await Application.Current.MainPage.DisplayAlert("Failure", "User Deletion Failed", "Ok");
+                }
+			}
+			else
+            {
+                await Application.Current.MainPage.DisplayAlert("Failure", "You are a good person", "Ok");
+            }
+		}
+		catch (Exception ex)
+		{
+			await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
+		}
+	}
+   
+	
 }
+
+@{
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Email ID</th>
+					<th>Client Name</th>
+					<th>Role</th>
+					<th>Delete</th>
+				</tr>
+			</thead>
+			<tbody class="align-items-center">
+				@{
+					try
+					{
+						if (userAuthList != null)
+						{
+							@foreach (var client in userAuthList)
+							{
+								<tr>
+									<td>@client.EmailID</td>
+									<td>@client.ClientName</td>
+									<td>@client.Role</td>
+									<td><button class="btn btn-link" @onclick="@(e => onDeleteButtonClicked(client.EmailID))">Delete</button></td>
+								</tr>
+							}
+						}
+						else
+						{
+							navManager.NavigateTo($"/error/{msg}");
+						}
+					}
+					catch (Exception ex)
+					{
+						msg = ex.Message.ToString();
+						navManager.NavigateTo($"/error/{msg}");
+					}
+				}
+			</tbody>
+		</table>
+	</div>
+}
+

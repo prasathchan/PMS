@@ -36,7 +36,7 @@
 		}
 		catch (Exception ex)
 		{
-			Messages.DisplayErrorAlert(ex.Message);
+			Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
 		}
 		base.OnInitialized();
 	}
@@ -57,22 +57,22 @@
 				var savResponse = await response;
 				if (savResponse.IsSuccessful)
 				{
-					Messages.DisplaySuccessAlert("Client Edited Successfully");
+					await Application.Current.MainPage.DisplayAlert("Success", "Client Edited Successfully", "Ok");
 					navManager.NavigateTo("/viewclientdetails");
 				}
 				else
 				{
-					Messages.DisplayErrorAlert(savResponse.ErrorMessage);
+					await Application.Current.MainPage.DisplayAlert("Failure", savResponse.ErrorMessage, "Ok");
 				}
 			}
 			else
 			{
-				Messages.DisplayErrorAlert("Please Enter Valid Data");	
+				await Application.Current.MainPage.DisplayAlert("Failure", "Please Enter Valid Data", "Ok");
 			}
 		}
 		catch (Exception ex)
 		{
-			Messages.DisplayErrorAlert(ex.Message);
+			await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
 		}
 	}
 
@@ -103,7 +103,7 @@
 		<div class="form-group row">
 			<label for="lblEmail" class="col-sm-2 col-form-label">Email ID</label>
 			<div class="col-sm-10">
-				<InputText id="txtEmailID" class="form-control" @bind-Value="cdObject.EmailID" />
+				<InputText id="txtEmailID" class="form-control" @bind-Value="cdObject.EmailID" @attributes="Page.SetReadOnly()" />
 				<ValidationMessage For="@(()=>cdObject.EmailID)" />
 			</div>
 		</div>

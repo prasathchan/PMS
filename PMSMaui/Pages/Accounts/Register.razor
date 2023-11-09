@@ -24,7 +24,7 @@
         }
         catch (Exception ex)
         {
-            Messages.DisplayErrorAlert(ex.Message);
+            Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
         }
         base.OnInitialized();
     }
@@ -52,18 +52,18 @@
 
                 if (savResponse.IsSuccessful)
                 {
-                    Messages.DisplaySuccessAlert("User Registered Successfully");
+                    await Application.Current.MainPage.DisplayAlert("Success", "User Registered Successfully", "Ok");
                     navManager.NavigateTo("/");
                 }
                 else
                 {
-                    Messages.DisplayErrorAlert(savResponse.Content);
+                    await Application.Current.MainPage.DisplayAlert("Failure", savResponse.Content, "Ok");
                 }
             }
         }
         catch (Exception ex)
         {
-            Messages.DisplayErrorAlert(ex.Message);
+            await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok");
         }
     }
 
@@ -76,7 +76,7 @@
                 navManager.NavigateTo("/");
             });
         }
-        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+        catch (Exception ex) { await Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok"); }
     }
 
     protected void ValidatePassword()
@@ -88,18 +88,19 @@
 
             if (password != null)
             {
-               bool match = Regex.IsMatch(password, MatchPasswordRegex);
-               if(match ==false)
-               {
-                    Messages.DisplayErrorAlert("Password doesnt match the requirments"); ;
-               }
+                bool match = Regex.IsMatch(password, MatchPasswordRegex);
+                if(match ==false)
+                {
+                    Application.Current.MainPage.DisplayAlert("Failure", "Password doesnt match the requirments", "Ok");
+
+                }
             }
             else
             {
-                Messages.DisplayErrorAlert("Password doesnt match the requirments");
+                Application.Current.MainPage.DisplayAlert("Failure", "Password doesnt match the requirments", "Ok");
             }
         }
-        catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+        catch (Exception ex) { Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok"); }
     }
 
     protected void ComparePassword()
@@ -109,12 +110,12 @@
             var password = login.Password;
             var confirmPassword = CPassword;
 
-        if (password != confirmPassword)
-        {
-            Messages.DisplayErrorAlert("Password and Confirm Password do not match");
+            if (password != confirmPassword)
+            {
+                    Application.Current.MainPage.DisplayAlert("Failure", "Password and Confirm Password do not match", "Ok");
+            }
         }
-    }
-    catch (Exception ex) { Messages.DisplayErrorAlert(ex.Message); }
+        catch (Exception ex) { Application.Current.MainPage.DisplayAlert("Failure", ex.Message, "Ok"); }
     }
 }
 
